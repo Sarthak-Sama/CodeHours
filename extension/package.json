@@ -1,0 +1,59 @@
+{
+  "name": "codehours",
+  "displayName": "Code Watch",
+  "description": "Tracks your coding time in IDLE",
+  "version": "0.0.1",
+  "engines": {
+    "vscode": "^1.96.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onCommand:codehours.setToken",
+    "onCommand:codehours.toggleStopwatch",
+    "onStartupFinished"
+  ],
+  "main": "./extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "codehours.setToken",
+        "title": "Set Session Key",
+        "category": "Code Watch"
+      },
+      {
+        "command": "codehours.toggleStopwatch",
+        "title": "Toggle Coding Timer",
+        "category": "Code Watch"
+      }
+    ],
+    "configuration": {
+      "type": "object",
+      "title": "Code Watch Settings",
+      "properties": {
+        "codehours.sessionKey": {
+          "type": "string",
+          "default": "",
+          "description": "Session key for the Code Watch extension"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "lint": "eslint .",
+    "pretest": "npm run lint",
+    "test": "vscode-test"
+  },
+  "devDependencies": {
+    "@types/mocha": "^10.0.10",
+    "@types/node": "20.x",
+    "@types/vscode": "^1.96.0",
+    "@vscode/test-cli": "^0.0.10",
+    "@vscode/test-electron": "^2.4.1",
+    "eslint": "^9.16.0"
+  },
+  "dependencies": {
+    "axios": "^1.7.9"
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "name": "codehours-stopwatch-widget",
+  "version": "1.0.0",
+  "description": "A realtime stopwatch widget for the CodeHours webapp that displays coding time.",
+  "main": "dist/widget.min.js",
+  "scripts": {
+    "build": "uglifyjs src/widget.js -c -m -o dist/widget.min.js",
+    "start": "live-server"
+  },
+  "author": "Sarthak Saklani",
+  "license": "MIT",
+  "devDependencies": {
+    "uglify-js": "^3.17.4",
+    "live-server": "^1.2.1"
+  }
+}

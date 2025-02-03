@@ -1,0 +1,16 @@
+@import "tailwindcss";
+
+@font-face {
+  font-family: kollektif;
+  src: url("/fonts/Kollektif.ttf");
+}
+
+@font-face {
+  font-family: kollektif;
+  font-weight: 900;
+  src: url("/fonts/Kollektif-Bold.ttf");
+}
+
+* {
+  font-family: kollektif;
+}
