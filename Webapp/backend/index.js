@@ -64,7 +64,11 @@ app.post("/api/fetchUser", timerController.fetchUser);
 app.post("/api/updateAboutSection", timerController.updateAboutSection);
 
 // Clerk Webhook route
-app.post("/webhooks/clerk", clerkWebhookController.handleUserWebhook),
+app.post(
+  "/webhooks/clerk",
+  bodyParser.raw({ type: "application/json" }),
+  clerkWebhookController.handleUserWebhook
+),
   // Start server
   app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);

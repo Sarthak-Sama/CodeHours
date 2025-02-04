@@ -123,7 +123,7 @@ function LoadingPage() {
       {/* Progress Bar at the top */}
       <div className="absolute top-0 left-0 w-full h-2 bg-gray-200">
         <div
-          className="h-full bg-blue-500 transition-all duration-100"
+          className="h-full bg-[#212529] transition-all duration-100"
           style={{ width: `${progress}%` }}
         ></div>
       </div>
