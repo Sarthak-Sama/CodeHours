@@ -10,7 +10,7 @@ const LanguageTimeSchema = new mongoose.Schema({
 
 const UserTimeSchema = new mongoose.Schema({
   token: { type: String, unique: true, required: true },
-  userId: { type: String, uniqure: true, required: true },
+  userId: { type: String, unique: true, required: true },
   username: { type: String, unique: true, required: true },
   fullname: { type: String, required: true },
   pfpUrl: { type: String, unique: true },

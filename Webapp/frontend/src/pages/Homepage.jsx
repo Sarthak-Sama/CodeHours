@@ -1,11 +1,10 @@
 //Leaderboard Page
 
 import React, { useEffect, useState } from "react";
-import LoadingPage from "./LoadingPage";
-import Navbar from "../components/Navbar";
 import Leaderboard from "../components/Leaderboard";
 import TopCards from "../components/TopCards";
 import axios from "../utils/axios";
+import { PropagateLoader } from "react-spinners";
 
 function Homepage() {
   const [leaderboardData, setLeaderboardData] = useState(null);
@@ -35,7 +34,9 @@ function Homepage() {
           <Leaderboard dataArray={leaderboardData} />
         </div>
       ) : (
-        "loading"
+        <div className="w-full h-full flex items-center justify-center">
+          <PropagateLoader color="#212529" className="mt-30 scale-[0.75]" />
+        </div>
       )}
     </>
   );

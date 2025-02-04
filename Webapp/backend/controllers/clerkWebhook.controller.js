@@ -1,38 +1,27 @@
 const UserTime = require("../models/time.model");
+const crypto = require("crypto");
 const { Webhook } = require("svix");
 
-const handleError = (res, error, context) => {
-  console.error(`${context} Error:`, error);
-  return res.status(500).json({
-    error: `Failed to ${context}`,
-    message: error.message,
-  });
-};
-
-module.exports.handlePfpUpdate = async (req, res) => {
+module.exports.handleUserWebhook = async (req, res) => {
   const SIGNING_SECRET = process.env.SIGNING_SECRET;
-
   if (!SIGNING_SECRET) {
-    return handleError(
-      res,
-      new Error("SIGNING_SECRET is missing from environment variables"),
-      "verify webhook signature"
+    throw new Error(
+      "Error: Please add SIGNING_SECRET from Clerk Dashboard to .env"
     );
   }
 
-  // Create new Svix instance with secret
+  // Create a new Svix instance with the secret
   const wh = new Webhook(SIGNING_SECRET);
 
-  // Get headers and body
+  // Get headers and the raw payload from the request.
   const headers = req.headers;
   const payload = req.body;
 
-  // Get Svix headers for verification
+  // Get the required Svix headers for verification
   const svix_id = headers["svix-id"];
   const svix_timestamp = headers["svix-timestamp"];
   const svix_signature = headers["svix-signature"];
 
-  // If there are no headers, error out
   if (!svix_id || !svix_timestamp || !svix_signature) {
     return res.status(400).json({
       success: false,
@@ -41,43 +30,115 @@ module.exports.handlePfpUpdate = async (req, res) => {
   }
 
   let evt;
-
-  // Attempt to verify the incoming webhook
   try {
+    // Verify the webhook payload using Svix
     evt = wh.verify(payload, {
       "svix-id": svix_id,
       "svix-timestamp": svix_timestamp,
       "svix-signature": svix_signature,
     });
   } catch (err) {
-    return handleError(res, err, "verify webhook signature");
+    console.error("Error verifying webhook:", err.message);
+    return res.status(400).json({
+      success: false,
+      message: err.message,
+    });
   }
 
-  // Extracting data from the event (evt)
+  // Process the event based on its type
   const eventType = evt.type;
-  if (eventType === "user.updated") {
-    const { id, profile_image_url } = evt.data;
+  const eventData = evt.data;
 
-    try {
-      const updateResult = await UserTime.findOneAndUpdate(
-        { userId: id },
-        { pfpUrl: image_url },
-        { new: true }
-      );
+  try {
+    if (eventType === "user.created") {
+      // Create a new user if one does not exist
+      const { id: userId, username, fullname, pfpUrl } = eventData;
 
-      if (!updateResult) {
-        return res.status(404).json({
-          success: false,
-          message: `User with ID ${id} not found for profile update`,
-        });
+      if (!userId) {
+        return res
+          .status(400)
+          .json({ error: "User Id not provided in event data" });
       }
-    } catch (err) {
-      return handleError(res, err, "update user profile image URL in database");
-    }
-  }
 
-  return res.status(200).json({
-    success: true,
-    message: "Updated the profile image via Clerk / Svix Webhook.",
-  });
+      const existingUser = await UserTime.findOne({ userId });
+
+      if (!existingUser) {
+        if (!pfpUrl || !username) {
+          return res
+            .status(400)
+            .json({ error: "PfpUrl or Username not provided in event data" });
+        }
+
+        // Create a unique session token
+        const sessionKey = crypto.randomBytes(16).toString("hex");
+
+        const newUser = await UserTime.create({
+          token: sessionKey,
+          userId,
+          username,
+          fullname,
+          pfpUrl,
+          total_time: 0,
+          daily_time: 0,
+          weekly_time: 0,
+          language_time: [],
+          last_updated: new Date(),
+        });
+
+        console.log("New user created via webhook:", newUser);
+      } else {
+        console.log(
+          "User already exists for webhook user.created event:",
+          existingUser
+        );
+      }
+    } else if (eventType === "user.deleted") {
+      // Delete the user if one exists
+      const { id: userId } = eventData;
+      if (!userId) {
+        return res
+          .status(400)
+          .json({ error: "User Id not provided in event data" });
+      }
+      const deletedUser = await UserTime.findOneAndDelete({ userId });
+      if (deletedUser) {
+        console.log("User deleted via webhook:", deletedUser);
+      } else {
+        console.log("User not found for deletion:", userId);
+      }
+    } else if (eventType === "user.updated") {
+      // Update the user's profile picture (and optionally username/fullname)
+      const { id: userId, pfpUrl, username, fullname } = eventData;
+      if (!userId) {
+        return res
+          .status(400)
+          .json({ error: "User Id not provided in event data" });
+      }
+
+      const existingUser = await UserTime.findOne({ userId });
+      if (!existingUser) {
+        return res.status(404).json({ error: "User not found for update" });
+      }
+
+      // Update the fields if provided
+      if (pfpUrl) existingUser.pfpUrl = pfpUrl;
+      if (username) existingUser.username = username;
+      if (fullname) existingUser.fullname = fullname;
+      existingUser.last_updated = new Date();
+
+      await existingUser.save();
+      console.log("User updated via webhook:", existingUser);
+    } else {
+      console.log("Unhandled event type:", eventType);
+    }
+
+    return res
+      .status(200)
+      .json({ success: true, message: "Webhook processed" });
+  } catch (error) {
+    console.error("Error handling webhook event:", error);
+    return res
+      .status(500)
+      .json({ success: false, message: "Internal Server Error" });
+  }
 };

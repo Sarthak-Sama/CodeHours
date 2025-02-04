@@ -1,43 +1,67 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Route, Routes } from "react-router-dom";
 import Homepage from "./pages/Homepage";
 import ProfilePage from "./pages/ProfilePage";
-import AuthPage from "./pages/AuthPage";
 import Navbar from "./components/Navbar";
 import { SignIn } from "@clerk/clerk-react";
 import PromptComponent from "./components/PromptComponent";
 import ComponentPage from "./pages/ComponentPage";
+import LoadingPage from "./pages/LoadingPage";
 
 function App() {
+  const [isLoading, setIsLoading] = useState(true);
   const [isLoginBoxVisible, setIsLoginBoxVisible] = useState(false);
+
+  useEffect(() => {
+    // Hide loading screen after 5 seconds
+    const timer = setTimeout(() => {
+      setIsLoading(false);
+    }, 5000);
+
+    return () => clearTimeout(timer);
+  }, []);
 
   return (
     <div className="w-screen h-screen relative overflow-hidden bg-[#f5f5f5] text-[#212529]">
-      <Navbar setIsLoginBoxVisible={setIsLoginBoxVisible} />
-      <div className="w-full h-[87vh] overflow-auto">
-        <Routes>
-          <Route path="/" element={<Homepage />} />
-          <Route path="/profile" element={<ProfilePage />} />
-          <Route path="/profile/:id" element={<ProfilePage />} />
-          <Route path="/component" element={<ComponentPage />} />
-          <Route path="/auth" element={<AuthPage />} />
-        </Routes>
-      </div>
-      {isLoginBoxVisible && (
+      {isLoading && (
         <div
-          onClick={() => setIsLoginBoxVisible(false)}
-          className="absolute top-0 left-0 w-screen h-screen bg-black/20 flex items-center justify-center"
+          className={`absolute top-0 left-0 w-screen h-screen transition-transform duration-1000 ${
+            !isLoading ? "translate-y-[-100vh]" : "translate-y-0"
+          }`}
         >
-          <div
-            onClick={(e) => {
-              e.stopPropagation();
-            }}
-          >
-            <SignIn withSignUp={true} />
-          </div>
+          <LoadingPage />
         </div>
       )}
-      <PromptComponent />
+      <div
+        className={`transition-opacity duration-1000 ${
+          isLoading ? "opacity-0" : "opacity-100"
+        }`}
+      >
+        <Navbar setIsLoginBoxVisible={setIsLoginBoxVisible} />
+        <div className="w-full h-[87vh] overflow-auto">
+          <Routes>
+            <Route path="/" element={<Homepage />} />
+            <Route path="/profile" element={<ProfilePage />} />
+            <Route path="/profile/:id" element={<ProfilePage />} />
+            <Route path="/component" element={<ComponentPage />} />
+          </Routes>
+        </div>
+        {isLoginBoxVisible && (
+          <div
+            onClick={() => setIsLoginBoxVisible(false)}
+            className="absolute top-0 left-0 w-screen h-screen bg-black/20 flex items-center justify-center"
+          >
+            <div
+              onClick={(e) => {
+                e.stopPropagation();
+              }}
+            >
+              <SignIn withSignUp={true} />
+            </div>
+          </div>
+        )}
+        <PromptComponent />
+      </div>
     </div>
   );
 }

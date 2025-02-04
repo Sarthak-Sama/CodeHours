@@ -297,48 +297,73 @@ const getYearlyStats = async (userId) => {
   return { time: result.length ? result[0].total : 0 };
 };
 
+// Old fetchUser function, Now we are handling user creation with the clerk webhook
+// module.exports.fetchUser = async (req, res) => {
+//   const { userId, pfpUrl, username, fullname } = req.body;
+
+//   if (!userId) {
+//     return res.status(400).json({ error: "User Id not provided" });
+//   }
+
+//   try {
+//     const existingUser = await UserTime.findOne({ userId });
+
+//     if (!existingUser) {
+//       if (!pfpUrl || !username) {
+//         return res
+//           .status(400)
+//           .json({ error: "PfpUrl, Username or Fullname not provided" });
+//       }
+//       const sessionKey = crypto.randomBytes(16).toString("hex");
+//       const newUser = await UserTime.create({
+//         token: sessionKey,
+//         userId,
+//         username,
+//         fullname,
+//         pfpUrl,
+//         total_time: 0,
+//         daily_time: 0,
+//         weekly_time: 0,
+//         language_time: [],
+//         last_updated: new Date(),
+//       });
+
+//       return res.status(200).json({
+//         message: "New user created.",
+//         user: newUser,
+//       });
+//     }
+
+//     return res.status(200).json({
+//       message: "User already exists",
+//       user: existingUser,
+//     });
+//   } catch (error) {
+//     return handleError(res, error, "create session");
+//   }
+// };
+
 module.exports.fetchUser = async (req, res) => {
-  const { userId, pfpUrl, username, fullname } = req.body;
+  const { userId } = req.body;
 
   if (!userId) {
     return res.status(400).json({ error: "User Id not provided" });
   }
 
   try {
-    const existingUser = await UserTime.findOne({ userId });
+    const user = await UserTime.findOne({ userId });
 
-    if (!existingUser) {
-      if ((!pfpUrl, !username)) {
-        return res
-          .status(400)
-          .json({ error: "PfpUrl, Username or Fullname not provided" });
-      }
-      const sessionKey = crypto.randomBytes(16).toString("hex");
-      const newUser = await UserTime.create({
-        token: sessionKey,
-        userId,
-        username,
-        fullname,
-        pfpUrl,
-        total_time: 0,
-        daily_time: 0,
-        weekly_time: 0,
-        language_time: [],
-        last_updated: new Date(),
-      });
-
-      return res.status(200).json({
-        message: "New user created.",
-        user: newUser,
-      });
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
     }
 
     return res.status(200).json({
-      message: "User already exists",
-      user: existingUser,
+      message: "User fetched successfully",
+      user,
     });
   } catch (error) {
-    return handleError(res, error, "create session");
+    console.error("Error fetching user:", error);
+    return res.status(500).json({ error: "Internal server error" });
   }
 };
 

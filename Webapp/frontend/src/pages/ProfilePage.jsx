@@ -6,6 +6,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import LanguageTimeDisplay from "../components/LanguageTimeDisplay";
 import { AnimatePresence, motion } from "framer-motion";
 import DailyActivityGrid from "../components/partials/DailyActivityGrid";
+import { PropagateLoader } from "react-spinners";
 
 function ProfilePage() {
   const {
@@ -345,7 +346,9 @@ function ProfilePage() {
           </div>
         </div>
       ) : (
-        "loading"
+        <div className="w-full h-full flex items-center justify-center">
+          <PropagateLoader color="#212529" className="mt-30 scale-[0.75]" />
+        </div>
       )}
     </div>
   );
