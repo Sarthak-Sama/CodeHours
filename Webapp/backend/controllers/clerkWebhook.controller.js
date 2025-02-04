@@ -52,12 +52,12 @@ module.exports.handleUserWebhook = async (req, res) => {
   try {
     if (eventType === "user.created") {
       // Create a new user if one does not exist
-      const { id: userId, username, fullname, pfpUrl } = eventData;
+      const { id: userId, username, fullname, image_url: pfpUrl } = eventData;
 
-      if (!userId) {
+      if (!userId || !username || !fullname || pfpUrl) {
         return res
           .status(400)
-          .json({ error: "User Id not provided in event data" });
+          .json({ error: "All credentials are not provided in event data" });
       }
 
       const existingUser = await UserTime.findOne({ userId });
@@ -108,7 +108,7 @@ module.exports.handleUserWebhook = async (req, res) => {
       }
     } else if (eventType === "user.updated") {
       // Update the user's profile picture (and optionally username/fullname)
-      const { id: userId, pfpUrl, username, fullname } = eventData;
+      const { id: userId, image_url: pfpUrl } = eventData;
       if (!userId) {
         return res
           .status(400)
@@ -122,8 +122,6 @@ module.exports.handleUserWebhook = async (req, res) => {
 
       // Update the fields if provided
       if (pfpUrl) existingUser.pfpUrl = pfpUrl;
-      if (username) existingUser.username = username;
-      if (fullname) existingUser.fullname = fullname;
       existingUser.last_updated = new Date();
 
       await existingUser.save();
