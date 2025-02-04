@@ -4,6 +4,7 @@ const { Webhook } = require("svix");
 
 module.exports.handleUserWebhook = async (req, res) => {
   const SIGNING_SECRET = process.env.SIGNING_SECRET;
+
   if (!SIGNING_SECRET) {
     throw new Error(
       "Error: Please add SIGNING_SECRET from Clerk Dashboard to .env"
@@ -17,26 +18,22 @@ module.exports.handleUserWebhook = async (req, res) => {
   const headers = req.headers;
   const payload = req.body;
 
-  // Get the required Svix headers for verification
-  const svix_id = headers["svix-id"];
-  const svix_timestamp = headers["svix-timestamp"];
-  const svix_signature = headers["svix-signature"];
+  // // Get the required Svix headers for verification
+  // const svix_id = headers["svix-id"];
+  // const svix_timestamp = headers["svix-timestamp"];
+  // const svix_signature = headers["svix-signature"];
 
-  if (!svix_id || !svix_timestamp || !svix_signature) {
-    return res.status(400).json({
-      success: false,
-      message: "Error: Missing svix headers",
-    });
-  }
+  // if (!svix_id || !svix_timestamp || !svix_signature) {
+  //   return res.status(400).json({
+  //     success: false,
+  //     message: "Error: Missing svix headers",
+  //   });
+  // }
 
   let evt;
   try {
     // Verify the webhook payload using Svix
-    evt = wh.verify(payload, {
-      "svix-id": svix_id,
-      "svix-timestamp": svix_timestamp,
-      "svix-signature": svix_signature,
-    });
+    evt = wh.verify(payload, headers);
   } catch (err) {
     console.error("Error verifying webhook:", err.message);
     return res.status(400).json({
@@ -52,9 +49,17 @@ module.exports.handleUserWebhook = async (req, res) => {
   try {
     if (eventType === "user.created") {
       // Create a new user if one does not exist
-      const { id: userId, username, fullname, image_url: pfpUrl } = eventData;
+      const {
+        id: userId,
+        username,
+        first_name,
+        last_name,
+        image_url: pfpUrl,
+      } = eventData;
+      const fullname =
+        [first_name, last_name].filter((n) => n).join(" ") || "Anonymous"; // Construct fullname
 
-      if (!userId || !username || !fullname || pfpUrl) {
+      if (!userId || !username || !fullname || !pfpUrl) {
         return res
           .status(400)
           .json({ error: "All credentials are not provided in event data" });
@@ -125,7 +130,6 @@ module.exports.handleUserWebhook = async (req, res) => {
       existingUser.last_updated = new Date();
 
       await existingUser.save();
-      console.log("User updated via webhook:", existingUser);
     } else {
       console.log("Unhandled event type:", eventType);
     }

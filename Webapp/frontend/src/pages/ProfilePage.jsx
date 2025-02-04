@@ -143,7 +143,7 @@ function ProfilePage() {
                 >
                   <img
                     src={id ? fetchedUser?.pfpUrl : user.imageUrl}
-                    className="w-full h-full rounded-full"
+                    className="w-full h-full rounded-full object-cover object-center"
                     alt="Profile"
                   />
                 </div>

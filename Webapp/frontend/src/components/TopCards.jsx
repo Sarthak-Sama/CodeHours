@@ -24,7 +24,10 @@ function TopCards({ rank1, rank2, rank3 }) {
           </h2>
           <div className="flex items-center gap-3 mt-5">
             <div className="w-[15vw] sm:w-[10vw] md:w-[7vw] lg:w-[5vw] xl:w-[3vw] aspect-square rounded-full">
-              <img src={rank3.pfpUrl} className="w-full h-full rounded-full" />
+              <img
+                src={rank3.pfpUrl}
+                className="w-full h-full rounded-full position-center object-cover"
+              />
             </div>
             <h3 className="text-[6vw] sm:text-[5vw] md:text-[3vw] lg:text-[2.25vw] xl:text-[1.5vw]">
               {rank3.username}
@@ -52,8 +55,11 @@ function TopCards({ rank1, rank2, rank3 }) {
             #1 Cracked
           </h2>
           <div className="flex flex-row xl:flex-col items-center gap-5 mt-5">
-            <div className="w-[15vw] mt-5 sm:w-[10vw] md:w-[7vw] lg:w-[5vw] xl:w-[5vw] aspect-square rounded-full">
-              <img src={rank1.pfpUrl} className="w-full h-full rounded-full" />
+            <div className="w-[15vw]  mt-5 sm:w-[10vw] md:w-[7vw] lg:w-[5vw] xl:w-[5vw] h-[15vw]  sm:h-[10vw] md:h-[7vw] lg:h-[5vw] xl:h-[5vw] rounded-full">
+              <img
+                src={rank1.pfpUrl}
+                className="w-full h-full rounded-full object-center object-cover"
+              />
             </div>
             <h3 className="text-[6vw] sm:text-[5vw] md:text-[3vw] lg:text-[2.25vw] xl:text-[2vw]">
               {rank1.username}
@@ -82,7 +88,10 @@ function TopCards({ rank1, rank2, rank3 }) {
           </h2>
           <div className="flex items-center gap-3 mt-5">
             <div className="w-[15vw] sm:w-[10vw] md:w-[7vw] lg:w-[5vw] xl:w-[4vw] aspect-square rounded-full">
-              <img src={rank2.pfpUrl} className="w-full h-full rounded-full" />
+              <img
+                src={rank2.pfpUrl}
+                className="w-full h-full rounded-full position-center object-cover"
+              />
             </div>
             <h3 className="text-[6vw] sm:text-[5vw] md:text-[3vw] lg:text-[2.25vw] xl:text-[1.75vw]">
               {rank2.username}

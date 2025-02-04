@@ -28,6 +28,7 @@ app.use(
     allowedHeaders: ["Content-Type", "Authorization"],
   })
 );
+app.use("/api/webhooks", bodyParser.raw({ type: "application/json" }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(
@@ -65,7 +66,7 @@ app.post("/api/updateAboutSection", timerController.updateAboutSection);
 
 // Clerk Webhook route
 app.post(
-  "/webhooks/clerk",
+  "/api/webhooks",
   bodyParser.raw({ type: "application/json" }),
   clerkWebhookController.handleUserWebhook
 ),
