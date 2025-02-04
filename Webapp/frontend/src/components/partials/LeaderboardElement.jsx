@@ -46,7 +46,9 @@ function LeaderboardElement({ data }) {
         ))}
       </div>
 
-      <div className="hidden lg:block"></div>
+      <div className="hidden lg:block text-center w-[20%] translate-x-8">
+        Level {data.level.current}
+      </div>
     </Link>
   );
 }

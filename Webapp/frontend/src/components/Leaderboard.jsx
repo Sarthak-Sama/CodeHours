@@ -16,7 +16,7 @@ function Leaderboard({ dataArray }) {
         <span className="md:w-[33%] lg:w-[45%] text-center hidden md:block">
           Technology
         </span>
-        <span className="w-[10%] text-center hidden lg:block">Badges</span>
+        <span className="w-[10%] text-center hidden lg:block">Level</span>
       </div>
       {dataArray.map((data, i) => (
         <div className="w-full flex justify-between items-center">

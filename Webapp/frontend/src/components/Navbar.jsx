@@ -49,7 +49,33 @@ function Navbar({ setIsLoginBoxVisible }) {
         id="left-section"
         className="font-[ortland] text-xl sm:text-3xl lg:text-5xl font-[900]"
       >
-        CodeHours
+        <span className="hover:text-[#E94545] transition-all duration-200 ease-in-out">
+          C
+        </span>
+        <span className="hover:text-[#E94545] transition-all duration-200 ease-in-out">
+          o
+        </span>
+        <span className="hover:text-[#E94545] transition-all duration-200 ease-in-out">
+          d
+        </span>
+        <span className="hover:text-[#E94545] transition-all duration-200 ease-in-out">
+          e
+        </span>
+        <span className="hover:text-[#E94545] transition-all duration-200 ease-in-out">
+          H
+        </span>
+        <span className="hover:text-[#E94545] transition-all duration-200 ease-in-out">
+          o
+        </span>
+        <span className="hover:text-[#E94545] transition-all duration-200 ease-in-out">
+          u
+        </span>
+        <span className="hover:text-[#E94545] transition-all duration-200 ease-in-out">
+          r
+        </span>
+        <span className="hover:text-[#E94545] transition-all duration-200 ease-in-out">
+          s
+        </span>
       </Link>
 
       <div id="right-section">

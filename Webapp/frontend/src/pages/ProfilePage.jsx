@@ -5,6 +5,7 @@ import axios from "../utils/axios";
 import { useNavigate, useParams } from "react-router-dom";
 import LanguageTimeDisplay from "../components/LanguageTimeDisplay";
 import { AnimatePresence, motion } from "framer-motion";
+import DailyActivityGrid from "../components/partials/DailyActivityGrid";
 
 function ProfilePage() {
   const {
@@ -296,7 +297,10 @@ function ProfilePage() {
             </div>
           </div>
 
-          {/* <div className="w-full flex justify-center mt-15 scale-[1.1]">
+          <h3 className="mt-15 font-bold text-[5vw] sm:text-[3.5vw] md:text-[2vw]">
+            Daily Activity:
+          </h3>
+          <div className="w-[80%] mx-auto flex justify-center mt-10 scale-[1.1]">
             {dailyData.length > 0 ? (
               <DailyActivityGrid
                 dailyData={dailyData}
@@ -305,8 +309,8 @@ function ProfilePage() {
             ) : (
               "loading"
             )}
-          </div> */}
-          <div className="md:flex">
+          </div>
+          <div className="md:flex mt-5">
             <div className="w-full md:w-1/2 mt-10">
               <h2 className="text-[5vw] sm:text-[3.5vw] md:text-[2vw] font-[900]">
                 Streaks:
@@ -327,7 +331,7 @@ function ProfilePage() {
                 </h3>
                 <h4 className="opacity-70 group-hover:opacity-100 transition-all duration-300 ease-in-out">
                   {/* The longest coding session is calculated in the backend */}
-                  43 days
+                  {fetchedUser?.longest_coding_session || 0}
                 </h4>
               </div>
             </div>

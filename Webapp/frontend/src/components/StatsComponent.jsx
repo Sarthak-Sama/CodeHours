@@ -56,7 +56,7 @@ export default function StatsComponent({
             {displayLabel}
           </p>
           <p className="intro" style={{ color: "#fff" }}>
-            Time: {formatTime(value)}
+            Time: {formatTime(Math.floor(value))}
           </p>
         </div>
       );

@@ -1,65 +1,113 @@
-# codehours README
+# Code Watch
 
-This is the README for your extension "codehours". After writing up a brief description, we recommend including the following sections.
+![Code Watch Logo](images/icon.png)  
+_Tracks your coding time while you work._
+
+## Table of Contents
+
+- [Introduction](#introduction)
+- [Features](#features)
+- [Installation](#installation)
+- [Usage](#usage)
+- [Commands](#commands)
+- [Configuration](#configuration)
+- [Screenshots](#screenshots)
+- [Contributing](#contributing)
+- [License](#license)
+- [Contact](#contact)
+
+## Introduction
+
+**Code Watch** is a lightweight Visual Studio Code extension that helps you track your coding time while you're in idle mode. It provides easy-to-use commands to set a session key and toggle a stopwatch timer directly from VS Code, allowing you to monitor your productivity without leaving your editor.
 
 ## Features
 
-Describe specific features of your extension including screenshots of your extension in action. Image paths are relative to this README file.
+- **Time Tracking:** Monitor your coding sessions and idle time effortlessly.
+- **Customizable Commands:** Easily set your session key and toggle the coding timer.
+- **User-Friendly Interface:** Seamless integration with VS Code, keeping the interface minimal and distraction-free.
+- **Configuration Options:** Customize your extension settings through the VS Code settings panel.
 
-For example if there is an image subfolder under your extension project workspace:
+## Usage
 
-\!\[feature X\]\(images/feature-x.png\)
+Once installed, **Code Watch** is ready to use:
 
-> Tip: Many popular extensions utilize animations. This is an excellent way to show off your extension! We recommend short, focused animations that are easy to follow.
+- **Set Session Key:**  
+  Open the Command Palette (`Ctrl+Shift+P` or `Cmd+Shift+P`) and type `Set Session Key` to configure your session key.
 
-## Requirements
+  ##### Where to get Session key ?
 
-If you have any requirements or dependencies, add a section describing those and how to install and configure them.
+  1. Go to [CodeHours](http://localhost:5173/).
+  2. Login using your Twitter or Google Account.
+  3. Copy **Session Key** from the navbar.
 
-## Extension Settings
+  ![Main Interface](images/copySessionKeySS.png)
 
-Include if your extension adds any VS Code settings through the `contributes.configuration` extension point.
+- **Toggle Stopwatch:**  
+  Use the Command Palette again to execute the `Toggle Coding Timer` command to start or stop the stopwatch.
 
-For example:
+## Commands
 
-This extension contributes the following settings:
+The extension contributes the following commands:
 
-- `myExtension.enable`: Enable/disable this extension.
-- `myExtension.thing`: Set to `blah` to do something.
+- **`codehours.setToken`**  
+  _Title:_ Set Session Key  
+  _Description:_ Allows you to set your session key for Code Watch.
 
-## Known Issues
+- **`codehours.toggleStopwatch`**  
+  _Title:_ Toggle Coding Timer  
+  _Description:_ Starts or stops the coding stopwatch.
 
-Calling out known issues can help limit users opening duplicate issues against your extension.
+## Installation
 
-## Release Notes
+1. **Via Visual Studio Marketplace:**
 
-Users appreciate release notes as you update your extension.
+   Open the Extensions view (`Ctrl+Shift+X` or `Cmd+Shift+X`) in VS Code, search for **"Code Watch"**, and click **Install**.
 
-### 1.0.0
+2. **Manually:**
 
-Initial release of ...
+   - Clone or download the repository.
+   - Run the following command in the extension folder to package it:
+     ```sh
+     vsce package
+     ```
+   - Install the generated `.vsix` file by running:
+     ```sh
+     code --install-extension codehours-0.0.1.vsix
+     ```
 
-### 1.0.1
+## Configuration
 
-Fixed issue #.
+You wouldn't generally need to follow this, you can configure the extension using the commands.
 
-### 1.1.0
+Customize your Code Watch settings by navigating to **File > Preferences > Settings** (or using `Ctrl+,`/`Cmd+,`) and searching for **"Code Watch Settings"**. The configuration options include:
 
-Added features X, Y, and Z.
+- **`codehours.sessionKey`**  
+  _Type:_ `string`  
+  _Default:_ `""`  
+  _Description:_ The session key for the Code Watch extension.
 
----
+## Contributing
 
-## Working with Markdown
+Contributions are welcome! If you would like to contribute to Code Watch, please follow these steps:
 
-You can author your README using Visual Studio Code. Here are some useful editor keyboard shortcuts:
+1. Fork the repository.
+2. Create a new branch (`git checkout -b feature/your-feature-name`).
+3. Commit your changes (`git commit -am 'Add new feature'`).
+4. Push to the branch (`git push origin feature/your-feature-name`).
+5. Open a Pull Request.
 
-- Split the editor (`Cmd+\` on macOS or `Ctrl+\` on Windows and Linux)
-- Toggle preview (`Shift+Cmd+V` on macOS or `Shift+Ctrl+V` on Windows and Linux)
-- Press `Ctrl+Space` (Windows, Linux, macOS) to see a list of Markdown snippets
+Please ensure your code follows the project's style guidelines and includes appropriate tests.
 
-## For more information
+## License
 
-- [Visual Studio Code's Markdown Support](http://code.visualstudio.com/docs/languages/markdown)
-- [Markdown Syntax Reference](https://help.github.com/articles/markdown-basics/)
+This project is licensed under the [MIT License](LICENSE).
 
-**Enjoy!**
+## Contact
+
+For questions, suggestions, or support, please reach out to:
+
+- **GitHub:** [Sarthak-Sama](https://github.com/Sarthak-Sama)
+- **Twitter:** [Sarthak_Sama](https://x.com/Sarthak_Sama)
+- **LinkedIn:** [Sarthak Saklani](https://x.com/Sarthak_Sama)
+
+Happy coding! 🚀

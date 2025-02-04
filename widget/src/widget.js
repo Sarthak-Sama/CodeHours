@@ -133,7 +133,7 @@ class CodeHoursStopwatch extends HTMLElement {
           }
         </style>
         <div class="stopwatch">
-          ${formattedTime} (${timespan})
+          ${formattedTime}
         </div>
       `;
   }

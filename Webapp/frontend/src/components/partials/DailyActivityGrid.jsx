@@ -82,7 +82,7 @@ function DailyActivityGrid({ dailyData, formatTime }) {
   };
 
   return (
-    <div className="w-fit h-fit relative group">
+    <div className="w-full h-fit relative group">
       <div className="grid grid-flow-col auto-cols-[minmax(14px,1fr)] gap-[4px] mb-1 ml-[30px]">
         {months.map((month, i) => {
           const showYear =

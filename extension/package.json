@@ -1,8 +1,25 @@
 {
   "name": "codehours",
-  "displayName": "Code Watch",
-  "description": "Tracks your coding time in IDLE",
+  "displayName": "Code Hours",
+  "publisher": "tensaiKun",
+  "description": "Tracks your coding time in IDLE, and displays stats and leaderboard on our webapp, Code Hours.",
   "version": "0.0.1",
+  "icon": "images/logoCircle.png",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Sarthak-Sama/codehours.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Sarthak-Sama/codehours/issues"
+  },
+  "homepage": "https://github.com/Sarthak-Sama/codehours#readme",
+  "keywords": [
+    "coding",
+    "time tracking",
+    "stopwatch",
+    "productivity",
+    "vscode extension"
+  ],
   "engines": {
     "vscode": "^1.96.0"
   },
@@ -20,22 +37,22 @@
       {
         "command": "codehours.setToken",
         "title": "Set Session Key",
-        "category": "Code Watch"
+        "category": "Code Hours"
       },
       {
         "command": "codehours.toggleStopwatch",
         "title": "Toggle Coding Timer",
-        "category": "Code Watch"
+        "category": "Code Hours"
       }
     ],
     "configuration": {
       "type": "object",
-      "title": "Code Watch Settings",
+      "title": "Code Hours Settings",
       "properties": {
         "codehours.sessionKey": {
           "type": "string",
           "default": "",
-          "description": "Session key for the Code Watch extension"
+          "description": "Session key for the Code Hours extension"
         }
       }
     }
