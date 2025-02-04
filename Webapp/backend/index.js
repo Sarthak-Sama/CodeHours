@@ -15,7 +15,6 @@ const PORT = process.env.PORT || 3000;
 
 // Middleware
 app.use(cookieParser());
-app.use("/webhooks/clerk", bodyParser.raw({ type: "application/json" }));
 app.use(
   cors({
     origin: [
@@ -64,7 +63,11 @@ app.post("/api/fetchUser", timerController.fetchUser);
 app.post("/api/updateAboutSection", timerController.updateAboutSection);
 
 // Clerk Webhook route
-app.post("/webhooks/clerk", clerkWebhookController.handlePfpUpdate),
+app.post(
+  "api/webhooks",
+  bodyParser.raw({ type: "application/json" }),
+  clerkWebhookController.handlePfpUpdate
+),
   // Start server
   app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
