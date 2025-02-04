@@ -35,7 +35,7 @@ function Homepage() {
         </div>
       ) : (
         <div className="w-full h-full flex items-center justify-center">
-          <PropagateLoader color="#212529" className="mt-30 scale-[0.75]" />
+          <PropagateLoader color="#212529" className="scale-[0.75]" />
         </div>
       )}
     </>
