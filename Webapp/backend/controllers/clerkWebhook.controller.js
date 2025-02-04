@@ -54,16 +54,14 @@ module.exports.handlePfpUpdate = async (req, res) => {
   }
 
   // Extracting data from the event (evt)
-  console.log(evt); // Remove this in production
   const eventType = evt.type;
-
   if (eventType === "user.updated") {
     const { id, profile_image_url } = evt.data;
 
     try {
       const updateResult = await UserTime.findOneAndUpdate(
         { userId: id },
-        { pfpUrl: profile_image_url },
+        { pfpUrl: image_url },
         { new: true }
       );
 
