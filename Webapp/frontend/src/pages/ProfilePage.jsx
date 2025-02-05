@@ -33,7 +33,6 @@ function ProfilePage() {
   useEffect(() => {
     if (id) {
       fetchUserData(id);
-      console.log(fetchedUser);
     }
   }, [id]);
 
@@ -47,7 +46,6 @@ function ProfilePage() {
   };
 
   const calculateLongestStreak = (dailyData) => {
-    console.log(dailyData);
     // Filter days where the user coded at least 60 minutes.
     const validDays = dailyData
       .filter((day) => day.totalTime >= 60 * 60 * 1000)
@@ -102,7 +100,6 @@ function ProfilePage() {
         `/api/activityData?userId=${fetchedUser.userId}`
       ); // Send userId as query param
       setDailyData(response.data.data); // Update state
-      console.log(response.data.data);
     } catch (error) {
       console.log(error);
     }

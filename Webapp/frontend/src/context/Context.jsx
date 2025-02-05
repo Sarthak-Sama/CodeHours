@@ -98,7 +98,7 @@ function Context({ children }) {
 
   useEffect(() => {
     if (user) {
-      fetchUserData();
+      fetchUserData(user.id);
     } else {
       console.log("user not present");
     }
