@@ -24,6 +24,7 @@ const UserTimeSchema = new mongoose.Schema({
   daily_time: { type: Number, default: 0 }, // Time spent in the last 24 hours
   weekly_time: { type: Number, default: 0 }, // Time spent in the last 7 days
   language_time: [LanguageTimeSchema], // Aggregated language-specific times
+  current_session_start: { type: Date, default: Date.now },
   longest_coding_session: { type: Number, default: 0 },
   last_updated: { type: Date, default: Date.now },
 });

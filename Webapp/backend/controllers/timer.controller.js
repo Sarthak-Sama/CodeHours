@@ -49,28 +49,36 @@ module.exports.logCodingTime = async (req, res) => {
     if (!user) {
       return res.status(404).json({ error: "User session not found" });
     }
-
-    // Determine if this log is part of an ongoing session or starts a new one.
-    // If there is no stored current_session_start or if the gap between the previous log
-    // (user.last_updated) and now is greater than our threshold, then we start a new session.
+    // Determine new session start and longest coding session
     let newSessionStart;
+    let newLongestCodingSession = user.longest_coding_session || 0;
+
+    // If there is no stored current_session_start or if the gap between the previous log
+    // (user.last_updated) and now is greater than our threshold, the previous session is considered ended.
     if (
       !user.current_session_start ||
       currentTime - user.last_updated > THRESHOLD_MS
     ) {
+      // If a session existed, calculate its duration
+      if (user.current_session_start && user.last_updated) {
+        const endedSessionDuration =
+          user.last_updated - user.current_session_start;
+        newLongestCodingSession = Math.max(
+          newLongestCodingSession,
+          endedSessionDuration
+        );
+      }
+      // Start a new session
       newSessionStart = currentTime;
     } else {
+      // Session is continuing
       newSessionStart = user.current_session_start;
+      const sessionDuration = currentTime - newSessionStart;
+      newLongestCodingSession = Math.max(
+        newLongestCodingSession,
+        sessionDuration
+      );
     }
-
-    // Compute the current session's duration in milliseconds.
-    const sessionDuration = currentTime - newSessionStart;
-    // If the current session duration exceeds the stored longest_coding_session,
-    // then update longest_coding_session. (Assume these times are stored in ms.)
-    const newLongestCodingSession =
-      sessionDuration > (user.longest_coding_session || 0)
-        ? sessionDuration
-        : user.longest_coding_session;
 
     // Prepare date keys for daily/weekly updates.
     const today = getDailyKey(); // Assuming this returns a date key or similar value for today.
@@ -152,7 +160,7 @@ module.exports.logCodingTime = async (req, res) => {
                 },
               },
             },
-            // Update our new session fields:
+            // Update our session fields
             current_session_start: newSessionStart,
             longest_coding_session: newLongestCodingSession,
           },

@@ -13,7 +13,9 @@ function TopCards({ rank1, rank2, rank3, formatTime }) {
         }}
       >
         <h2 className="w-full text-center font-900 text-xl">
-          {formatTime(Math.floor(rank3.daily_time / (60 * 1000)))}
+          {rank3
+            ? formatTime(Math.floor(rank3.daily_time / (60 * 1000)))
+            : "N.A."}
         </h2>
         <div
           id="pos-3-card"
@@ -49,7 +51,9 @@ function TopCards({ rank1, rank2, rank3, formatTime }) {
         className="w-[80%] xl:w-[20%] h-[45vh] mt-[-29vh] xl:mt-[0] "
       >
         <h2 className="w-full text-center font-900 text-xl">
-          {formatTime(Math.floor(rank1.daily_time / (60 * 1000)))}
+          {rank1
+            ? formatTime(Math.floor(rank1.daily_time / (60 * 1000)))
+            : "N.A."}
         </h2>
         <div
           id="pos-1-card"
@@ -85,7 +89,9 @@ function TopCards({ rank1, rank2, rank3, formatTime }) {
         className="w-[80%] xl:w-[20%] h-[35vh] mt-[-23.5vh] xl:mt-[10vh]"
       >
         <h2 className="w-full text-center font-900 text-xl">
-          {formatTime(Math.floor(rank2.daily_time / (60 * 1000)))}
+          {rank2
+            ? formatTime(Math.floor(rank2.daily_time / (60 * 1000)))
+            : "N.A."}
         </h2>
         <div
           id="pos-2-card"
@@ -97,7 +103,11 @@ function TopCards({ rank1, rank2, rank3, formatTime }) {
           <div className="flex items-center gap-3 mt-5">
             <div className="w-[15vw] sm:w-[10vw] md:w-[7vw] lg:w-[5vw] xl:w-[4vw] aspect-square rounded-full">
               <img
-                src={rank2 ? rank2.pfpUrl || "/images/user" : "/images/user"}
+                src={
+                  rank2
+                    ? rank2.pfpUrl || "/images/userIcon.png"
+                    : "/images/userIcon.png"
+                }
                 className="w-full h-full rounded-full position-center object-cover"
               />
             </div>

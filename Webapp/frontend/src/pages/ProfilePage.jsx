@@ -37,6 +37,7 @@ function ProfilePage({ formatTime }) {
   }, [id]);
 
   const calculateLongestStreak = (dailyData) => {
+    if (dailyData === "NA") return;
     // Filter days where the user coded at least 60 minutes.
     const validDays = dailyData
       .filter((day) => day.totalTime >= 60 * 60 * 1000)
@@ -92,7 +93,11 @@ function ProfilePage({ formatTime }) {
       ); // Send userId as query param
       setDailyData(response.data.data); // Update state
     } catch (error) {
-      console.log(error);
+      if (error.response && error.response.status === 404) {
+        setDailyData("NA");
+      } else {
+        console.log(error); // Handle other errors
+      }
     }
   };
 
@@ -220,7 +225,6 @@ function ProfilePage({ formatTime }) {
                 </div>
               </div>
               <div className="flex w-full md:w-[70%]">
-                <h3 className="mt-5">BADGES:</h3>
                 <div className="flex w-full"></div>
               </div>
               <p className="w-full md:w-[70%] mt-2 text-justify">
@@ -279,65 +283,74 @@ function ProfilePage({ formatTime }) {
                 )}
               </p>
             </div>
-            <div className="w-full md:w-[50%]">
-              <StatsComponent
-                dailyData={dailyData}
-                langDataArray={fetchedUser.language_time}
-                formatTime={formatTime}
-                formatLanguage={formatLanguage}
-              />
-            </div>
-          </div>
-
-          <h3 className="mt-15 font-bold text-[5vw] sm:text-[3.5vw] md:text-[2vw]">
-            Daily Activity:
-          </h3>
-          <div className="w-full border-2 p-5 rounded-lg md:w-[82%] mx-auto flex justify-center mt-10 scale-100 md:scale-[1.1]">
-            {dailyData.length > 0 ? (
-              // Wrap in an overflow container for horizontal scrolling on small screens
-              <div className="overflow-x-auto">
-                <DailyActivityGrid
+            {dailyData !== "NA" && (
+              <div className="w-full md:w-[50%]">
+                <StatsComponent
                   dailyData={dailyData}
+                  langDataArray={fetchedUser.language_time}
                   formatTime={formatTime}
+                  formatLanguage={formatLanguage}
                 />
               </div>
-            ) : (
-              "loading"
             )}
           </div>
-          <div className="md:flex mt-5">
-            <div className="w-full md:w-1/2 mt-10">
-              <h2 className="text-[5vw] sm:text-[3.5vw] md:text-[2vw] font-[900]">
-                Streaks:
-              </h2>
-              <div className="flex my-1 gap-2 items-center justify-center w-full md:w-[70%] xl:w-[50%] h-[9vh] rounded-xl bg-[#212529] hover:bg-[#191c1e] text-[#f5f5f5] group transition-all duration-300 ease-in-out">
-                <h3 className="opacity-70 group-hover:opacity-80 transition-all duration-300 ease-in-out">
-                  Longest Daily Streak:
-                </h3>
-                <h4 className="opacity-70 group-hover:opacity-100 transition-all duration-300 ease-in-out">
-                  {`${longestDailyStreak} ${
-                    longestDailyStreak === 1 ? "day" : "days"
-                  }`}
-                </h4>
+          {dailyData === "NA" ? (
+            <p className="w-full text-center mt-18 font-[900] text-xl text-[#e94545]">
+              Configure your vs code extension and START TRACKING
+            </p>
+          ) : (
+            <>
+              <h3 className="mt-15 font-bold text-[5vw] sm:text-[3.5vw] md:text-[2vw]">
+                Daily Activity:
+              </h3>
+              <div className="w-full border-2 p-5 rounded-lg md:w-[82%] mx-auto flex justify-center mt-10 scale-100 md:scale-[1.1]">
+                {dailyData.length > 0 ? (
+                  // Wrap in an overflow container for horizontal scrolling on small screens
+                  <div className="overflow-x-auto">
+                    <DailyActivityGrid
+                      dailyData={dailyData}
+                      formatTime={formatTime}
+                    />
+                  </div>
+                ) : (
+                  "loading"
+                )}
               </div>
-              <div className="flex my-1 gap-2 items-center justify-center w-full md:w-[70%] xl:w-[50%] h-[9vh] rounded-xl bg-[#212529] hover:bg-[#191c1e] text-[#f5f5f5] group transition-all duration-300 ease-in-out">
-                <h3 className="opacity-70 group-hover:opacity-80 transition-all duration-300 ease-in-out">
-                  Longest Coding Session:
-                </h3>
-                <h4 className="opacity-70 group-hover:opacity-100 transition-all duration-300 ease-in-out">
-                  {/* The longest coding session is calculated in the backend */}
-                  {fetchedUser?.longest_coding_session || 0}
-                </h4>
+              <div className="md:flex mt-5">
+                <div className="w-full md:w-1/2 mt-10">
+                  <h2 className="text-[5vw] sm:text-[3.5vw] md:text-[2vw] font-[900]">
+                    Streaks:
+                  </h2>
+                  <div className="flex my-1 gap-2 items-center justify-center w-full md:w-[70%] xl:w-[50%] h-[9vh] rounded-xl bg-[#212529] hover:bg-[#191c1e] text-[#f5f5f5] group transition-all duration-300 ease-in-out">
+                    <h3 className="opacity-70 group-hover:opacity-80 transition-all duration-300 ease-in-out">
+                      Longest Daily Streak:
+                    </h3>
+                    <h4 className="opacity-70 group-hover:opacity-100 transition-all duration-300 ease-in-out">
+                      {`${longestDailyStreak} ${
+                        longestDailyStreak === 1 ? "day" : "days"
+                      }`}
+                    </h4>
+                  </div>
+                  <div className="flex my-1 gap-2 items-center justify-center w-full md:w-[70%] xl:w-[50%] h-[9vh] rounded-xl bg-[#212529] hover:bg-[#191c1e] text-[#f5f5f5] group transition-all duration-300 ease-in-out">
+                    <h3 className="opacity-70 group-hover:opacity-80 transition-all duration-300 ease-in-out">
+                      Longest Coding Session:
+                    </h3>
+                    <h4 className="opacity-70 group-hover:opacity-100 transition-all duration-300 ease-in-out">
+                      {/* The longest coding session is calculated in the backend */}
+                      {fetchedUser?.longest_coding_session || 0}
+                    </h4>
+                  </div>
+                </div>
+                <div className="w-full md:w-1/2 mt-10">
+                  <LanguageTimeDisplay
+                    langDataArray={fetchedUser.language_time}
+                    formatTime={formatTime}
+                    formatLanguage={formatLanguage}
+                  />
+                </div>
               </div>
-            </div>
-            <div className="w-full md:w-1/2 mt-10">
-              <LanguageTimeDisplay
-                langDataArray={fetchedUser.language_time}
-                formatTime={formatTime}
-                formatLanguage={formatLanguage}
-              />
-            </div>
-          </div>
+            </>
+          )}
         </div>
       ) : (
         <div className="w-full h-full flex items-center justify-center">

@@ -1,6 +1,6 @@
 //Leaderboard Page
 
-import React, { useEffect, useState } from "react";
+import React, { useContext, useEffect, useState } from "react";
 import Leaderboard from "../components/Leaderboard";
 import TopCards from "../components/TopCards";
 import axios from "../utils/axios";
@@ -19,15 +19,16 @@ function Homepage({ formatTime }) {
   useEffect(() => {
     fetchLeaderboard();
   }, []);
+
   return (
     <>
       {leaderboardData && leaderboardData.length > 0 ? (
         <div>
           <div className="xl:scale-100 scale-80">
             <TopCards
-              rank1={leaderboardData[0]}
-              rank2={leaderboardData[1]}
-              rank3={leaderboardData[2]}
+              rank1={leaderboardData[0] || null}
+              rank2={leaderboardData[1] || null}
+              rank3={leaderboardData[2] || null}
               formatTime={formatTime}
             />
           </div>
