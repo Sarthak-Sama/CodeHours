@@ -6,7 +6,7 @@ import TopCards from "../components/TopCards";
 import axios from "../utils/axios";
 import { PropagateLoader } from "react-spinners";
 
-function Homepage() {
+function Homepage({ formatTime }) {
   const [leaderboardData, setLeaderboardData] = useState(null);
   const fetchLeaderboard = async () => {
     try {
@@ -26,12 +26,13 @@ function Homepage() {
           <div className="xl:scale-100 scale-80">
             <TopCards
               rank1={leaderboardData[0]}
-              rank2={leaderboardData[0]}
-              rank3={leaderboardData[0]}
+              rank2={leaderboardData[1]}
+              rank3={leaderboardData[2]}
+              formatTime={formatTime}
             />
           </div>
 
-          <Leaderboard dataArray={leaderboardData} />
+          <Leaderboard dataArray={leaderboardData} formatTime={formatTime} />
         </div>
       ) : (
         <div className="w-full h-full flex items-center justify-center">

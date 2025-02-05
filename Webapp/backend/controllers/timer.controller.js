@@ -4,7 +4,7 @@ const moment = require("moment");
 const DailyTime = require("../models/dailyTime.model");
 
 // Helper functions
-const getDailyKey = () => moment().startOf("day").toDate();
+const getDailyKey = () => moment().utc().startOf("day").toDate();
 const handleError = (res, error, context) => {
   console.error(`${context} Error:`, error);
   return res.status(500).json({
@@ -74,7 +74,7 @@ module.exports.logCodingTime = async (req, res) => {
 
     // Prepare date keys for daily/weekly updates.
     const today = getDailyKey(); // Assuming this returns a date key or similar value for today.
-    const lastWeek = moment().subtract(7, "days").startOf("day").toDate();
+    const lastWeek = moment().utc().subtract(7, "days").startOf("day").toDate();
 
     // Atomic update for UserTime using an aggregation pipeline.
     // We update all the timing fields as before and, additionally,
@@ -281,7 +281,7 @@ module.exports.getUserTimeStats = async (req, res) => {
 
 // Helper functions for stats
 const getMonthlyStats = async (userId) => {
-  const startOfMonth = moment().startOf("month").toDate();
+  const startOfMonth = moment().utc().startOf("month").toDate();
   const result = await DailyTime.aggregate([
     { $match: { userId, date: { $gte: startOfMonth } } },
     { $group: { _id: null, total: { $sum: "$totalTime" } } },
@@ -290,7 +290,7 @@ const getMonthlyStats = async (userId) => {
 };
 
 const getYearlyStats = async (userId) => {
-  const startOfYear = moment().startOf("year").toDate();
+  const startOfYear = moment().utc().startOf("year").toDate();
   const result = await DailyTime.aggregate([
     { $match: { userId, date: { $gte: startOfYear } } },
     { $group: { _id: null, total: { $sum: "$totalTime" } } },

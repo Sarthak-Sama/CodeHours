@@ -2,7 +2,7 @@ import React from "react";
 import ProfilePage from "../pages/ProfilePage";
 import LeaderboardElement from "./partials/LeaderboardElement";
 
-function Leaderboard({ dataArray }) {
+function Leaderboard({ dataArray, formatTime }) {
   return (
     <div className="px-10">
       <div className="w-full flex items-center  my-5">
@@ -23,7 +23,7 @@ function Leaderboard({ dataArray }) {
           <div className="flex items-center justify-center border-2  h-[3.5rem] rounded-[1.75vw] sm:rounded-[1.25vw] md:rounded-[1vw] lg:rounded-[.75vw] aspect-square rounded-xl mx-[2%] text-xl">
             #{i + 1}
           </div>
-          <LeaderboardElement key={i} data={data} />
+          <LeaderboardElement key={i} data={data} formatTime={formatTime} />
         </div>
       ))}
     </div>

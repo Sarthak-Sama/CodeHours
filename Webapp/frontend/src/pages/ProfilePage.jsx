@@ -8,7 +8,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import DailyActivityGrid from "../components/partials/DailyActivityGrid";
 import { PropagateLoader } from "react-spinners";
 
-function ProfilePage() {
+function ProfilePage({ formatTime }) {
   const {
     user,
     fetchedUser,
@@ -35,15 +35,6 @@ function ProfilePage() {
       fetchUserData(id);
     }
   }, [id]);
-
-  const formatTime = (minutes) => {
-    if (minutes < 60) {
-      return `${minutes}min`;
-    }
-    const hrs = Math.floor(minutes / 60);
-    const mins = Math.round(minutes % 60);
-    return `${hrs}hr ${mins}min`;
-  };
 
   const calculateLongestStreak = (dailyData) => {
     // Filter days where the user coded at least 60 minutes.
@@ -191,7 +182,11 @@ function ProfilePage() {
                               100
                             }%] border-4 rounded-full`} // Calculate the progress percentage
                           />
-                          <h4 className="w-full text-center pt-5">{`${fetchedUser.level.xpAtCurrentLevel} / ${fetchedUser.level.xpForNextLevel} XP`}</h4>
+                          <h4 className="w-full text-center pt-5">{`${Math.floor(
+                            fetchedUser.level.xpAtCurrentLevel
+                          )} / ${Math.floor(
+                            fetchedUser.level.xpForNextLevel
+                          )} XP`}</h4>
                         </div>
                       </div>
                     </div>
@@ -245,7 +240,6 @@ function ProfilePage() {
                     ></textarea>
                     <button
                       onClick={() => {
-                        setAboutSectionContent("");
                         setIsWriting(false);
                       }}
                       class="bg-[#252129] text-white font-semibold py-2 px-6 rounded-lg hover:bg-black transition duration-300 mr-5"
@@ -265,7 +259,7 @@ function ProfilePage() {
                     {!id && (
                       <span
                         onClick={() => setIsWriting(true)}
-                        className="ml-5 cursor-pointer tracking-[2px] text-[0.9vw] text-[#E94545] opacity-70 hover:opacity-100 transition-all duration-250 ease-in-out"
+                        className="ml-5 cursor-pointer tracking-[2px] text-[2]vw sm:text-[1.6vw] md:text-[1.25vw] lg:text-[0.9vw] text-[#E94545] opacity-70 hover:opacity-100 transition-all duration-250 ease-in-out"
                       >
                         Edit your 'About' Section.
                       </span>
@@ -276,7 +270,7 @@ function ProfilePage() {
                     {!id && (
                       <span
                         onClick={() => setIsWriting(true)}
-                        className="cursor-pointer tracking-[2px] text-[1.25vw] text-[#E94545] opacity-75 hover:opacity-100 transition-all duration-250 ease-in-out"
+                        className="cursor-pointer tracking-[2px] text-[2]vw sm:text-[1.6vw] md:text-[1.25vw] lg:text-[0.9vw] text-[#E94545] opacity-75 hover:opacity-100 transition-all duration-250 ease-in-out"
                       >
                         Add your 'About' section.
                       </span>
@@ -298,12 +292,15 @@ function ProfilePage() {
           <h3 className="mt-15 font-bold text-[5vw] sm:text-[3.5vw] md:text-[2vw]">
             Daily Activity:
           </h3>
-          <div className="w-[80%] mx-auto flex justify-center mt-10 scale-[1.1]">
+          <div className="w-full border-2 p-5 rounded-lg md:w-[82%] mx-auto flex justify-center mt-10 scale-100 md:scale-[1.1]">
             {dailyData.length > 0 ? (
-              <DailyActivityGrid
-                dailyData={dailyData}
-                formatTime={formatTime}
-              />
+              // Wrap in an overflow container for horizontal scrolling on small screens
+              <div className="overflow-x-auto">
+                <DailyActivityGrid
+                  dailyData={dailyData}
+                  formatTime={formatTime}
+                />
+              </div>
             ) : (
               "loading"
             )}

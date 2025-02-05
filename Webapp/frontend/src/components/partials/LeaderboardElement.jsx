@@ -2,7 +2,7 @@ import React, { useContext } from "react";
 import { UserContext } from "../../context/Context";
 import { Link } from "react-router-dom";
 
-function LeaderboardElement({ data }) {
+function LeaderboardElement({ data, formatTime }) {
   const { formatLanguage } = useContext(UserContext);
 
   // Sort languages by time and take top 4
@@ -27,7 +27,7 @@ function LeaderboardElement({ data }) {
       </div>
 
       <div className="w-[50%] md:w-[20%] lg:w-[10%] text-right md:text-center lg:text-left">
-        {Math.floor(data.daily_time / (60 * 1000))} min
+        {formatTime(Math.floor(data.daily_time / (60 * 1000)))}
       </div>
 
       <div

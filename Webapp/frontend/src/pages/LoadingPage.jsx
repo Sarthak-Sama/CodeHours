@@ -119,8 +119,10 @@ function LoadingPage() {
       </div>
 
       {/* Quote Section */}
-      <h2 className="text-[3vw] max-w-screen text-center">{quote.japanese}</h2>
-      <h3 className="text-[1.25vw] tracking-wider mt-10 text-center">
+      <h2 className="text-[6vw] px-5 sm:px-0 sm:text-[4.5vw] md:text-[3vw] max-w-screen text-center">
+        {quote.japanese}
+      </h2>
+      <h3 className="text-[3.5vw] sm:text-[2.25] md:text-[1.25vw] tracking-wider mt-10 text-center">
         {quote.english}
       </h3>
     </div>

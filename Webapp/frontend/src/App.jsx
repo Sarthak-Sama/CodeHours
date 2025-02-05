@@ -12,6 +12,15 @@ function App() {
   const [isLoading, setIsLoading] = useState(true);
   const [isLoginBoxVisible, setIsLoginBoxVisible] = useState(false);
 
+  const formatTime = (minutes) => {
+    if (minutes < 60) {
+      return `${minutes}min`;
+    }
+    const hrs = Math.floor(minutes / 60);
+    const mins = Math.round(minutes % 60);
+    return `${hrs}hr ${mins}min`;
+  };
+
   useEffect(() => {
     // Hide loading screen after 5 seconds
     const timer = setTimeout(() => {
@@ -38,11 +47,17 @@ function App() {
         }`}
       >
         <Navbar setIsLoginBoxVisible={setIsLoginBoxVisible} />
-        <div className="w-full h-[87vh] overflow-auto">
+        <div className="w-full h-[90vh] sm:h-[87vh] overflow-auto">
           <Routes>
-            <Route path="/" element={<Homepage />} />
-            <Route path="/profile" element={<ProfilePage />} />
-            <Route path="/profile/:id" element={<ProfilePage />} />
+            <Route path="/" element={<Homepage formatTime={formatTime} />} />
+            <Route
+              path="/profile"
+              element={<ProfilePage formatTime={formatTime} />}
+            />
+            <Route
+              path="/profile/:id"
+              element={<ProfilePage formatTime={formatTime} />}
+            />
             <Route path="/component" element={<ComponentPage />} />
           </Routes>
         </div>

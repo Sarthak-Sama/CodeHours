@@ -4,7 +4,7 @@ const axios = require("axios");
 
 // Constants
 const TIMER_UPDATE_INTERVAL = 2 * 60 * 1000; // 2 minutes in milliseconds
-const ENDPOINT = "http://localhost:3000/api/logTime"; // Update to match your backend endpoint
+const ENDPOINT = "https://codetracker-backend-fc9r.onrender.com/api/logTime"; // Update to match your backend endpoint
 const INACTIVITY_TIMEOUT = 5 * 60 * 1000; // 5 minutes in milliseconds
 
 // Variables for heartbeat, session key, and timer

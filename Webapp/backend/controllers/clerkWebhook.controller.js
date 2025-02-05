@@ -18,18 +18,6 @@ module.exports.handleUserWebhook = async (req, res) => {
   const headers = req.headers;
   const payload = req.body;
 
-  // // Get the required Svix headers for verification
-  // const svix_id = headers["svix-id"];
-  // const svix_timestamp = headers["svix-timestamp"];
-  // const svix_signature = headers["svix-signature"];
-
-  // if (!svix_id || !svix_timestamp || !svix_signature) {
-  //   return res.status(400).json({
-  //     success: false,
-  //     message: "Error: Missing svix headers",
-  //   });
-  // }
-
   let evt;
   try {
     // Verify the webhook payload using Svix
@@ -45,8 +33,6 @@ module.exports.handleUserWebhook = async (req, res) => {
   // Process the event based on its type
   const eventType = evt.type;
   const eventData = evt.data;
-  console.log(eventType);
-  console.log(eventData);
   try {
     if (eventType === "user.created") {
       // Create a new user if one does not exist
@@ -57,10 +43,17 @@ module.exports.handleUserWebhook = async (req, res) => {
         last_name,
         image_url: pfpUrl,
       } = eventData;
+
+      const randomFourDigits = Math.floor(1000 + Math.random() * 9000);
       const fullname =
         [first_name, last_name].filter((n) => n).join(" ") || "Anonymous"; // Construct fullname
+      const finalUsername =
+        username || `${first_name}${last_name}${randomFourDigits}`;
 
-      if (!userId || !username || !fullname || !pfpUrl) {
+      if (!userId || !finalUsername || !fullname || !pfpUrl) {
+        console.log(
+          "Error while creating user. All credentials are not provided in event data"
+        );
         return res
           .status(400)
           .json({ error: "All credentials are not provided in event data" });
@@ -69,7 +62,7 @@ module.exports.handleUserWebhook = async (req, res) => {
       const existingUser = await UserTime.findOne({ userId });
 
       if (!existingUser) {
-        if (!pfpUrl || !username) {
+        if (!pfpUrl || !finalUsername) {
           return res
             .status(400)
             .json({ error: "PfpUrl or Username not provided in event data" });
@@ -81,7 +74,7 @@ module.exports.handleUserWebhook = async (req, res) => {
         const newUser = await UserTime.create({
           token: sessionKey,
           userId,
-          username,
+          username: finalUsername,
           fullname,
           pfpUrl,
           total_time: 0,

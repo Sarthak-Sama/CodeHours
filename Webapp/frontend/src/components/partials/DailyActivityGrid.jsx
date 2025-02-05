@@ -83,7 +83,7 @@ function DailyActivityGrid({ dailyData, formatTime }) {
 
   return (
     <div className="w-full h-fit relative group">
-      <div className="grid grid-flow-col auto-cols-[minmax(14px,1fr)] gap-[4px] mb-1 ml-[30px]">
+      <div className="grid grid-flow-col auto-cols-[minmax(13px,1fr)] gap-[4px] mb-1 ml-[30px]">
         {months.map((month, i) => {
           const showYear =
             month.year !== months[i - 1]?.year || month.name === "Jan";
@@ -104,7 +104,7 @@ function DailyActivityGrid({ dailyData, formatTime }) {
       </div>
 
       <div className="grid grid-cols-[auto_1fr] gap-2">
-        <div className="grid grid-rows-7 gap-[4px] justify-items-end">
+        <div className="grid  grid-rows-7 gap-[4px] justify-items-end">
           {dayLabels.map((day, i) => (
             <div
               key={i}
@@ -116,7 +116,7 @@ function DailyActivityGrid({ dailyData, formatTime }) {
           ))}
         </div>
 
-        <div className="grid grid-rows-7 grid-flow-col auto-cols-[minmax(14px,1fr)] gap-[4px]">
+        <div className="grid grid-rows-7 grid-flow-col auto-cols-[minmax(14px, 1fr)] gap-[4px]">
           {days.map((date, i) => {
             const formattedDate = date.toISOString().split("T")[0];
             const activity = dailyData.find((entry) =>
@@ -128,7 +128,7 @@ function DailyActivityGrid({ dailyData, formatTime }) {
             return (
               <div
                 key={i}
-                className={`relative w-[1vw] aspect-square rounded-xs transition-colors ${colorClass}`}
+                className={`relative w-[0.8rem] aspect-square rounded-xs transition-colors ${colorClass}`}
                 onMouseEnter={() => {
                   setHoveredDate(date);
                   setHoverIndex(i);
