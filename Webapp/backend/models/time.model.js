@@ -13,7 +13,7 @@ const UserTimeSchema = new mongoose.Schema({
   userId: { type: String, unique: true, required: true },
   username: { type: String, unique: true, required: true },
   fullname: { type: String, required: true },
-  pfpUrl: { type: String, unique: true },
+  pfpUrl: { type: String },
   about: { type: String },
   level: {
     current: { type: Number, default: 1 },

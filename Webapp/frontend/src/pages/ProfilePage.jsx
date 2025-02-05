@@ -131,7 +131,7 @@ function ProfilePage() {
   const longestDailyStreak = calculateLongestStreak(dailyData);
 
   return (
-    <div className="pb-10">
+    <div className="pb-10 w-full h-full">
       {fetchedUser ? (
         <div className="px-10">
           <div className="flex flex-col md:flex-row md:justify-between w-full">
@@ -347,7 +347,7 @@ function ProfilePage() {
         </div>
       ) : (
         <div className="w-full h-full flex items-center justify-center">
-          <PropagateLoader color="#212529" className="mt-30 scale-[0.75]" />
+          <PropagateLoader color="#212529" className="scale-[0.75]" />
         </div>
       )}
     </div>

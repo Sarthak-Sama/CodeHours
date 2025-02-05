@@ -45,7 +45,8 @@ module.exports.handleUserWebhook = async (req, res) => {
   // Process the event based on its type
   const eventType = evt.type;
   const eventData = evt.data;
-
+  console.log(eventType);
+  console.log(eventData);
   try {
     if (eventType === "user.created") {
       // Create a new user if one does not exist
@@ -120,21 +121,39 @@ module.exports.handleUserWebhook = async (req, res) => {
           .json({ error: "User Id not provided in event data" });
       }
 
-      const existingUser = await UserTime.findOne({ userId });
-      if (!existingUser) {
-        return res.status(404).json({ error: "User not found for update" });
+      try {
+        const existingUser = await UserTime.findOne({ userId });
+        if (!existingUser) {
+          console.log("User not found for update.");
+          return res.status(404).json({ error: "User not found for update" });
+        }
+
+        // Update pfpUrl only if it's provided and valid
+        if (pfpUrl && typeof pfpUrl === "string") {
+          existingUser.pfpUrl = pfpUrl;
+          console.log("[DEBUG] Setting pfpUrl to:", pfpUrl);
+        } else {
+          console.log("[DEBUG] pfpUrl not provided or invalid:", pfpUrl);
+        }
+
+        existingUser.last_updated = new Date();
+
+        // Explicitly mark the field as modified (for nested or mixed schemas)
+        existingUser.markModified("pfpUrl");
+
+        // Save and log the result
+        await existingUser.save();
+        console.log("[DEBUG] User saved successfully:", existingUser);
+      } catch (err) {
+        console.error("[ERROR] Failed to save user:", err.message);
+        return res.status(500).json({ error: "Database save failed" });
       }
-
-      // Update the fields if provided
-      if (pfpUrl) existingUser.pfpUrl = pfpUrl;
-      existingUser.last_updated = new Date();
-
-      await existingUser.save();
     } else {
       console.log("Unhandled event type:", eventType);
     }
 
     return res
+
       .status(200)
       .json({ success: true, message: "Webhook processed" });
   } catch (error) {

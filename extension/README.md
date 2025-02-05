@@ -1,31 +1,7 @@
 # Code Watch
 
-![Code Watch Logo](images/icon.png)  
+![Code Watch Logo](images/logo.png)  
 _Tracks your coding time while you work._
-
-## Table of Contents
-
-- [Introduction](#introduction)
-- [Features](#features)
-- [Installation](#installation)
-- [Usage](#usage)
-- [Commands](#commands)
-- [Configuration](#configuration)
-- [Screenshots](#screenshots)
-- [Contributing](#contributing)
-- [License](#license)
-- [Contact](#contact)
-
-## Introduction
-
-**Code Watch** is a lightweight Visual Studio Code extension that helps you track your coding time while you're in idle mode. It provides easy-to-use commands to set a session key and toggle a stopwatch timer directly from VS Code, allowing you to monitor your productivity without leaving your editor.
-
-## Features
-
-- **Time Tracking:** Monitor your coding sessions and idle time effortlessly.
-- **Customizable Commands:** Easily set your session key and toggle the coding timer.
-- **User-Friendly Interface:** Seamless integration with VS Code, keeping the interface minimal and distraction-free.
-- **Configuration Options:** Customize your extension settings through the VS Code settings panel.
 
 ## Usage
 
@@ -44,6 +20,31 @@ Once installed, **Code Watch** is ready to use:
 
 - **Toggle Stopwatch:**  
   Use the Command Palette again to execute the `Toggle Coding Timer` command to start or stop the stopwatch.
+
+  ![Stopwatch](images/stopwatchSS.png)
+
+## Table of Contents
+
+- [Introduction](#introduction)
+- [Features](#features)
+- [Installation](#installation)
+- [Commands](#commands)
+- [Configuration](#configuration)
+- [Screenshots](#screenshots)
+- [Contributing](#contributing)
+- [License](#license)
+- [Contact](#contact)
+
+## Introduction
+
+**Code Watch** is a lightweight Visual Studio Code extension that helps you track your coding time while you're coding. It provides easy-to-use commands to set a session key and toggle a stopwatch timer directly from VS Code, allowing you to monitor your productivity without leaving your editor.
+
+## Features
+
+- **Time Tracking:** Monitor your coding sessions and idle time effortlessly.
+- **Customizable Commands:** Easily set your session key and toggle the coding timer.
+- **User-Friendly Interface:** Seamless integration with VS Code, keeping the interface minimal and distraction-free.
+- **Configuration Options:** Customize your extension settings through the VS Code settings panel.
 
 ## Commands
 
@@ -110,4 +111,4 @@ For questions, suggestions, or support, please reach out to:
 - **Twitter:** [Sarthak_Sama](https://x.com/Sarthak_Sama)
 - **LinkedIn:** [Sarthak Saklani](https://x.com/Sarthak_Sama)
 
-Happy coding! 🚀
+Get Tracked, Stay Cracked ! 🚀

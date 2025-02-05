@@ -263,9 +263,101 @@ const ComponentPage = () => {
           </a>
         </motion.div>
       </div>
+      {/* FAQ Section */}
+      <motion.div className="mb-10 p-6 bg-white shadow-lg rounded">
+        <h2 className="text-2xl font-semibold text-[#e94545] mb-4">
+          FAQ: VS Code Stopwatch vs Website Time Difference
+        </h2>
+        <div className="space-y-4">
+          <div>
+            <p className="font-medium mb-2">
+              Q: Why is there a time difference between my VS Code stopwatch and
+              the website?
+            </p>
+            <p className="text-gray-600 leading-relaxed">
+              A: The difference occurs because:
+              <ul className="list-disc ml-6 mt-2 space-y-2">
+                <li>
+                  <strong>Tracking Methods:</strong> VS Code tracks active
+                  editing time in real-time, while the website aggregates logged
+                  sessions from our database
+                </li>
+                <li>
+                  <strong>Sync Intervals:</strong> VS Code extension batches
+                  time updates every 2 minutes - if you close before sync,
+                  recent time isn't logged
+                </li>
+                <li>
+                  <strong>Inactivity Handling:</strong> Both pause after 5
+                  minutes of inactivity, but might detect activity slightly
+                  differently
+                </li>
+              </ul>
+            </p>
+          </div>
+          <div>
+            <p className="font-medium mb-2">
+              Q: How can I minimize the difference?
+            </p>
+            <p className="text-gray-600 leading-relaxed">
+              A: Ensure you:
+              <ul className="list-disc ml-6 mt-2 space-y-2">
+                <li>Properly close VS Code to trigger final time sync</li>
+                <li>Maintain stable internet connection for regular syncs</li>
+                <li>Update to latest extension version</li>
+              </ul>
+            </p>
+          </div>
+        </div>
+      </motion.div>
 
-      {/* Back to Top Button */}
-      <BackToTopButton />
+      {/* New Features Section */}
+      <motion.div className="mb-10 p-6 bg-white shadow-lg rounded">
+        <h2 className="text-2xl font-semibold text-[#e94545] mb-4">
+          New Features Coming Soon! 🚀
+        </h2>
+        <div className="space-y-4">
+          <div className="flex items-start">
+            <div className="bg-[#e94545] text-white px-3 py-1 rounded-full mr-4">
+              1
+            </div>
+            <div>
+              <h3 className="font-semibold mb-1">
+                🎨 Profile Customization Levels
+              </h3>
+              <p className="text-gray-600 leading-relaxed">
+                Unlock visual themes, badges, and special icons as you
+                accumulate coding hours. Reach new levels (Novice → Pro →
+                Master) with exclusive rewards!
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-start">
+            <div className="bg-[#e94545] text-white px-3 py-1 rounded-full mr-4">
+              2
+            </div>
+            <div>
+              <h3 className="font-semibold mb-1">⏳ Project Time Tracking</h3>
+              <p className="text-gray-600 leading-relaxed">
+                Track time spent on individual projects with automatic
+                repository detection. Set project milestones, view time
+                breakdowns by language, and generate productivity reports!
+              </p>
+            </div>
+          </div>
+
+          <p className="mt-4 text-sm text-gray-600">
+            Have feature requests?{" "}
+            <a
+              href="https://x.com/Sarthak_Sama"
+              className="text-[#e94545] hover:underline"
+            >
+              Tweet us your ideas!
+            </a>
+          </p>
+        </div>
+      </motion.div>
     </div>
   );
 };

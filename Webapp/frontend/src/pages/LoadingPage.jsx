@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { motion } from "framer-motion";
 
 const quotes = [
   {
@@ -97,35 +98,24 @@ const quotes = [
 ];
 
 function LoadingPage() {
-  const [progress, setProgress] = useState(0);
-
-  const quote = useMemo(
-    () => quotes[Math.floor(Math.random() * quotes.length)],
-    []
-  );
-
-  useEffect(() => {
-    let interval = setInterval(() => {
-      setProgress((oldProgress) => {
-        if (oldProgress >= 100) {
-          clearInterval(interval);
-          return 100;
-        }
-        return oldProgress + 2;
-      });
-    }, 100);
-
-    return () => clearInterval(interval);
-  }, []);
+  const quote = quotes[Math.floor(Math.random() * quotes.length)];
 
   return (
     <div className="h-full w-full flex flex-col items-center justify-center relative">
       {/* Progress Bar at the top */}
       <div className="absolute top-0 left-0 w-full h-2 bg-gray-200">
-        <div
+        <motion.div
           className="h-full bg-[#212529] transition-all duration-100"
-          style={{ width: `${progress}%` }}
-        ></div>
+          initial={{ width: 0 }}
+          animate={{ width: "100%" }}
+          exit={{ width: "100%" }}
+          transition={{
+            type: "spring",
+            damping: 200,
+            stiffness: 100,
+            duration: "5s",
+          }}
+        />
       </div>
 
       {/* Quote Section */}

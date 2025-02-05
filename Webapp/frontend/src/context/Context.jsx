@@ -6,7 +6,6 @@ export const UserContext = createContext();
 
 function Context({ children }) {
   const { user } = useUser();
-  console.log(user);
   const [fetchedUser, setFetchedUser] = useState(null);
   const [promptState, setPromptState] = useState("error");
   const [promptMessage, setPromptMessage] = useState("");
@@ -85,21 +84,16 @@ function Context({ children }) {
   };
 
   const fetchUserData = async (otherUserId) => {
-    let response;
-    if (otherUserId) {
-      response = await axios.post("/api/fetchUser", {
+    if (!otherUserId) return; // Prevents unnecessary execution
+
+    try {
+      const response = await axios.post("/api/fetchUser", {
         userId: otherUserId,
       });
-    } else {
-      response = await axios.post("/api/fetchUser", {
-        userId: user.id,
-        pfpUrl: user.imageUrl,
-        username: user.username,
-        fullname: user.fullName,
-      });
+      setFetchedUser(response.data.user);
+    } catch (error) {
+      console.error("Error fetching user data:", error);
     }
-
-    setFetchedUser(response.data.user);
   };
 
   useEffect(() => {
