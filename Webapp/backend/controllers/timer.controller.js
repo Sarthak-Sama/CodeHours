@@ -39,7 +39,7 @@ module.exports.logCodingTime = async (req, res) => {
   }
 
   try {
-    const currentTime = new Date();
+    const currentTime = moment().utc().toDate();
     // Define a threshold (in milliseconds) for a gap that ends a session.
     // Since logs are sent every 2 minutes, a gap longer than 3 minutes indicates a new session.
     const THRESHOLD_MS = 3 * 60 * 1000; // 3 minutes
