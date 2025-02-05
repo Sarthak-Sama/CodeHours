@@ -168,7 +168,10 @@ module.exports.logCodingTime = async (req, res) => {
     // Update DailyTime with an atomic operation (as before).
     await DailyTime.findOneAndUpdate(
       { userId: updatedUser.userId, date: today },
-      { $inc: { totalTime: timeSpent } },
+      {
+        $inc: { totalTime: timeSpent },
+        $setOnInsert: { userId: updatedUser.userId, date: today },
+      },
       { upsert: true }
     );
 
@@ -189,21 +192,19 @@ module.exports.logCodingTime = async (req, res) => {
     // XP required to level up.
     const xpRequiredForNextLevel = nextLevelThreshold - currentLevelThreshold;
 
-    // If the new level is higher than the current stored level, update it.
-    if (newLevel > updatedUser.level) {
-      await UserTime.updateOne(
-        { token },
-        {
-          $set: {
-            "level.xpAtCurrentLevel": xpIntoCurrentLevel,
-            "level.xpForNextLevel": xpRequiredForNextLevel,
-          },
-          $max: {
-            "level.current": newLevel,
-          },
-        }
-      );
-    }
+    // If the new level is higher than the current stored level, update it and the XP is upadted each time.
+    await UserTime.updateOne(
+      { token },
+      {
+        $set: {
+          "level.xpAtCurrentLevel": xpIntoCurrentLevel,
+          "level.xpForNextLevel": xpRequiredForNextLevel,
+        },
+        $max: {
+          "level.current": newLevel,
+        },
+      }
+    );
 
     return res.status(200).json({
       message: "Time logged successfully",

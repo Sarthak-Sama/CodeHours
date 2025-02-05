@@ -96,7 +96,7 @@ function Navbar({ setIsLoginBoxVisible }) {
               className="relative hidden md:block text-sm tracking-[2px] px-5 py-2 border-[1px] rounded-full overflow-hidden"
             >
               <h3
-                className="relative z-5 transition-all duration-300 ease-out"
+                className="relative pointer-none cursor-pointer z-5 transition-all duration-300 ease-out"
                 style={{ color: cursorVisible ? "#f5f5f5" : "#212529" }}
               >
                 {isProfilePage
@@ -149,7 +149,7 @@ function Navbar({ setIsLoginBoxVisible }) {
             className="relative text-sm tracking-[2px] px-5 py-2 border border-gray-500 rounded-full cursor-pointer transition-all duration-300 hover:bg-gray-100 active:scale-95 overflow-hidden"
           >
             <h3
-              className="relative z-5 transition-all duration-300 ease-out"
+              className="relative z-5 pointer-none cursor-pointer transition-all duration-300 ease-out"
               style={{ color: cursorVisible ? "#f5f5f5" : "#212529" }}
             >
               Start Tracking...
