@@ -131,7 +131,7 @@ function Navbar({ setIsLoginBoxVisible }) {
               <UserButton />
             </div>
             <Link to="/profile" className="text-lg flex items-center group">
-              {user?.username}
+              {user?.username || fetchedUser?.username}
               <span className="ml-2 group-hover:translate-x-3 transition-all duration-300 ease-in-out">
                 <RiArrowRightSLine size={16} />
               </span>

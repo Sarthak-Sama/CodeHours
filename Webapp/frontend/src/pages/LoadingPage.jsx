@@ -111,8 +111,7 @@ function LoadingPage() {
           exit={{ width: "100%" }}
           transition={{
             type: "spring",
-            damping: 200,
-            stiffness: 100,
+            damping: 100,
             duration: "5s",
           }}
         />

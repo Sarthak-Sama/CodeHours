@@ -306,7 +306,7 @@ function ProfilePage({ formatTime }) {
               <div className="w-full border-2 p-5 rounded-lg md:w-[82%] mx-auto flex justify-center mt-10 scale-100 md:scale-[1.1]">
                 {dailyData.length > 0 ? (
                   // Wrap in an overflow container for horizontal scrolling on small screens
-                  <div className="overflow-x-auto">
+                  <div className="overflow-x-auto lg:overflow-x-visible">
                     <DailyActivityGrid
                       dailyData={dailyData}
                       formatTime={formatTime}
@@ -337,7 +337,11 @@ function ProfilePage({ formatTime }) {
                     </h3>
                     <h4 className="opacity-70 group-hover:opacity-100 transition-all duration-300 ease-in-out">
                       {/* The longest coding session is calculated in the backend */}
-                      {fetchedUser?.longest_coding_session || 0}
+                      {formatTime(
+                        Math.floor(
+                          fetchedUser?.longest_coding_session / (60 * 1000)
+                        )
+                      ) || 0}
                     </h4>
                   </div>
                 </div>

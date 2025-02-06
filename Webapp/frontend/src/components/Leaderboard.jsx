@@ -4,7 +4,7 @@ import LeaderboardElement from "./partials/LeaderboardElement";
 
 function Leaderboard({ dataArray, formatTime }) {
   return (
-    <div className="px-10">
+    <div className="px-10 pb-10">
       <div className="w-full flex items-center  my-5">
         <span className="w-[9%] ml-[5%] sm:ml-[2.5%] md:ml-[0.5%] lg:ml-0 text-center">
           Rank.
