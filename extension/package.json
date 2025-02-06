@@ -3,7 +3,7 @@
   "displayName": "Code Hours",
   "publisher": "tensaiKun",
   "description": "Tracks your coding time in IDLE, and displays stats and leaderboard on our webapp, Code Hours.",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "icon": "images/logoCircle.png",
   "repository": {
     "type": "git",

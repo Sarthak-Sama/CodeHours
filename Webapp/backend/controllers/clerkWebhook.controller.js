@@ -1,5 +1,6 @@
 const UserTime = require("../models/time.model");
 const crypto = require("crypto");
+const moment = require("moment");
 const { Webhook } = require("svix");
 
 module.exports.handleUserWebhook = async (req, res) => {
@@ -81,7 +82,7 @@ module.exports.handleUserWebhook = async (req, res) => {
           daily_time: 0,
           weekly_time: 0,
           language_time: [],
-          last_updated: new Date(),
+          last_updated: moment().utc(),
         });
 
         console.log("New user created via webhook:", newUser);
@@ -129,7 +130,7 @@ module.exports.handleUserWebhook = async (req, res) => {
           console.log("[DEBUG] pfpUrl not provided or invalid:", pfpUrl);
         }
 
-        existingUser.last_updated = new Date();
+        existingUser.last_updated = moment().utc();
 
         // Explicitly mark the field as modified (for nested or mixed schemas)
         existingUser.markModified("pfpUrl");

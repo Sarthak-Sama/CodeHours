@@ -12,7 +12,7 @@ Once installed, **Code Watch** is ready to use:
 
   ##### Where to get Session key ?
 
-  1. Go to [CodeHours](http://localhost:5173/).
+  1. Go to [CodeHours](https://code-tracker-frontend.vercel.app/).
   2. Login using your Twitter or Google Account.
   3. Copy **Session Key** from the navbar.
 

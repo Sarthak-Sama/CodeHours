@@ -1,6 +1,4 @@
 const express = require("express");
-const expressSession = require("express-session");
-const MongoStore = require("connect-mongo");
 const { connectDB } = require("./config/db.config");
 const timerController = require("./controllers/timer.controller");
 const clerkWebhookController = require("./controllers/clerkWebhook.controller");
@@ -31,24 +29,6 @@ app.use(
 app.use("/api/webhooks", bodyParser.raw({ type: "application/json" }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(
-  expressSession({
-    store: MongoStore.create({
-      mongoUrl: process.env.MONGO_URI, // Use your MongoDB connection string
-      collectionName: "sessions", // Optional: Specify collection name
-      ttl: 7 * 60 * 60 * 24, // 7 day session expiry (in seconds)
-    }),
-    secret: process.env.EXPRESS_SECRET || "super-secret-key", // Use a strong secret
-    resave: false,
-    saveUninitialized: false,
-    cookie: {
-      httpOnly: true, // Prevents XSS attacks
-      secure: false, // to be changed to process.env.NODE_ENV === 'production' later
-      maxAge: 7 * 1000 * 60 * 60 * 24, // 7-day session expiration
-    },
-  })
-);
-
 connectDB();
 
 // Routes
