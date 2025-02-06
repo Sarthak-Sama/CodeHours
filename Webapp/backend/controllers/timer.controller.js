@@ -492,3 +492,23 @@ module.exports.getCodingTime = async (req, res) => {
     res.status(500).json({ error: "Server error." });
   }
 };
+
+module.exports.getDailyTime = async (req, res) => {
+  const { token } = req.params;
+
+  if (!token) {
+    return res.status(400).json({ error: "Token parameter is missing." });
+  }
+
+  try {
+    const userTime = await UserTime.findOne({ token });
+    if (!userTime) {
+      return res.status(404).json({ error: "User not found." });
+    }
+
+    return res.status(200).json({ daily_time: userTime.daily_time });
+  } catch (error) {
+    console.error("Error retrieving daily time:", error);
+    return res.status(500).json({ error: "Internal server error." });
+  }
+};

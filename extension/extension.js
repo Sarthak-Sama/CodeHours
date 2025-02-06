@@ -4,7 +4,9 @@ const axios = require("axios");
 
 // Constants
 const TIMER_UPDATE_INTERVAL = 2 * 60 * 1000; // 2 minutes in milliseconds
-const ENDPOINT = "https://codetracker-backend-fc9r.onrender.com/api/logTime"; // Update to match your backend endpoint
+const ENDPOINT = "https://codetracker-backend-fc9r.onrender.com/api/logTime"; // Logging endpoint
+const GET_ENDPOINT =
+  "https://codetracker-backend-fc9r.onrender.com/api/getDailyTime"; // New endpoint for fetching total time
 const INACTIVITY_TIMEOUT = 5 * 60 * 1000; // 5 minutes in milliseconds
 
 // Variables for heartbeat, session key, and timer
@@ -164,6 +166,36 @@ const loadSessionKey = () => {
 };
 
 /**
+ * Fetches the initial coding time from the backend so the stopwatch starts from the current total.
+ */
+const fetchInitialCodingTime = async () => {
+  if (!sessionKey) {
+    console.warn("Session key not set, cannot fetch initial coding time.");
+    return;
+  }
+  try {
+    const response = await axios.get(GET_ENDPOINT, {
+      params: { token: sessionKey },
+    });
+    if (response.status === 200) {
+      // Assuming the backend returns an object with a "totalTime" property (in milliseconds)
+      totalCodingTime = response.data.daily_time || 0;
+      console.log(`Fetched initial coding time: ${totalCodingTime}ms.`);
+    } else {
+      console.error(
+        "Failed to fetch initial coding time:",
+        response.statusText
+      );
+    }
+  } catch (error) {
+    console.error(
+      "Error fetching initial coding time:",
+      error.response?.data?.error || error.message
+    );
+  }
+};
+
+/**
  * Updates the real-time coding timer in the status bar.
  */
 const updateTimer = () => {
@@ -222,8 +254,7 @@ const loadStopwatchVisibility = () => {
  * Starts the real-time coding timer and the periodic language logging.
  */
 const startTimer = () => {
-  totalCodingTime = 0; // Reset overall coding time
-
+  // Do not reset totalCodingTime here since it may have been fetched from the backend.
   // Update the status bar timer every second.
   timerIntervalId = setInterval(updateTimer, 1000);
 
@@ -298,8 +329,15 @@ const activate = (context) => {
     languageStartTime = Date.now();
   }
 
-  // Start the timers.
-  startTimer();
+  // Fetch initial coding time (if a session key exists) before starting the timer.
+  if (sessionKey) {
+    fetchInitialCodingTime().then(() => {
+      startTimer();
+    });
+  } else {
+    // If no session key is set, simply start the timer (totalCodingTime will be 0).
+    startTimer();
+  }
 
   // Register disposables.
   context.subscriptions.push(
