@@ -124,7 +124,7 @@ function ProfilePage({ formatTime }) {
   const longestDailyStreak = calculateLongestStreak(dailyData);
 
   return (
-    <div className="pb-10 w-full h-full">
+    <div className="w-full h-full">
       {fetchedUser ? (
         <div className="px-10">
           <div className="flex flex-col md:flex-row md:justify-between w-full">
@@ -345,7 +345,7 @@ function ProfilePage({ formatTime }) {
                     </h4>
                   </div>
                 </div>
-                <div className="w-full md:w-1/2 mt-10">
+                <div className="w-full md:w-1/2 mt-10 mb-12">
                   <LanguageTimeDisplay
                     langDataArray={fetchedUser.language_time}
                     formatTime={formatTime}
