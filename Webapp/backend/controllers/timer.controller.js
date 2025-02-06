@@ -494,7 +494,7 @@ module.exports.getCodingTime = async (req, res) => {
 };
 
 module.exports.getDailyTime = async (req, res) => {
-  const { token } = req.params;
+  const { token } = req.query;
 
   if (!token) {
     return res.status(400).json({ error: "Token parameter is missing." });
