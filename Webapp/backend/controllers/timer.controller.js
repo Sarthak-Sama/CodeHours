@@ -3,6 +3,8 @@ const crypto = require("crypto");
 const moment = require("moment");
 const DailyTime = require("../models/dailyTime.model");
 
+// Helper functions
+const getDailyKey = () => moment().utc().startOf("day").toDate();
 const handleError = (res, error, context) => {
   console.error(`${context} Error:`, error);
   return res.status(500).json({
