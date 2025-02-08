@@ -3,8 +3,6 @@ const crypto = require("crypto");
 const moment = require("moment");
 const DailyTime = require("../models/dailyTime.model");
 
-// Helper functions
-const getDailyKey = () => moment().utc().startOf("day").toDate();
 const handleError = (res, error, context) => {
   console.error(`${context} Error:`, error);
   return res.status(500).json({
@@ -28,52 +26,82 @@ function getXpForLevel(level) {
 }
 
 module.exports.logCodingTime = async (req, res) => {
-  const { token, language, timeSpent } = req.body;
+  // Destructure the new fields from the request body.
+  const { token, language, startTime, endTime, instanceId } = req.body;
 
   // Validate input
-  if (!token || !language || typeof timeSpent !== "number") {
+  if (!token || !language || !startTime || !endTime) {
     return res.status(400).json({
       error:
-        "Invalid request. Token, language, and numeric timeSpent are required.",
+        "Invalid request. Token, language, startTime, and endTime are required.",
     });
   }
 
+  // Convert incoming timestamps to Date objects.
+  const startTimestamp = new Date(startTime);
+  const endTimestamp = new Date(endTime);
+  if (isNaN(startTimestamp) || isNaN(endTimestamp)) {
+    return res.status(400).json({
+      error: "Invalid startTime or endTime format.",
+    });
+  }
+  if (endTimestamp <= startTimestamp) {
+    return res
+      .status(400)
+      .json({ error: "endTime must be greater than startTime." });
+  }
+
   try {
-    const currentTime = moment().utc().toDate();
+    // Retrieve the user document by token.
+    let user = await UserTime.findOne({ token });
+    if (!user) {
+      return res.status(404).json({ error: "User session not found." });
+    }
+
+    // Deduplication: determine the effective start time.
+    // If the new interval's start is earlier than user.last_updated,
+    // then only count from user.last_updated onward.
+    let effectiveStartTime = startTimestamp;
+    if (user.last_updated && new Date(user.last_updated) > startTimestamp) {
+      effectiveStartTime = new Date(user.last_updated);
+    }
+    const effectiveTimeSpent = endTimestamp - effectiveStartTime;
+
+    // If nothing new to add, simply return success.
+    if (effectiveTimeSpent <= 0) {
+      return res.status(200).json({ message: "No new time to log.", user });
+    }
+
+    // Use the incoming endTimestamp as the current time for logging.
+    const currentTime = endTimestamp;
+
     // Define a threshold (in milliseconds) for a gap that ends a session.
     // Since logs are sent every 2 minutes, a gap longer than 3 minutes indicates a new session.
     const THRESHOLD_MS = 3 * 60 * 1000; // 3 minutes
 
-    // Retrieve the current user document so we can determine session continuity.
-    let user = await UserTime.findOne({ token });
-    if (!user) {
-      return res.status(404).json({ error: "User session not found" });
-    }
-    // Determine new session start and longest coding session
+    // Determine session boundaries.
     let newSessionStart;
     let newLongestCodingSession = user.longest_coding_session || 0;
-
-    // If there is no stored current_session_start or if the gap between the previous log
-    // (user.last_updated) and now is greater than our threshold, the previous session is considered ended.
     if (
       !user.current_session_start ||
-      currentTime - user.last_updated > THRESHOLD_MS
+      currentTime - new Date(user.last_updated) > THRESHOLD_MS
     ) {
-      // If a session existed, calculate its duration
+      // If a session existed, calculate its duration.
       if (user.current_session_start && user.last_updated) {
         const endedSessionDuration =
-          user.last_updated - user.current_session_start;
+          new Date(user.last_updated) - new Date(user.current_session_start);
         newLongestCodingSession = Math.max(
           newLongestCodingSession,
           endedSessionDuration
         );
       }
-      // Start a new session
+      // Start a new session.
       newSessionStart = currentTime;
     } else {
-      // Session is continuing
+      // Session is continuing.
       newSessionStart = user.current_session_start;
-      const sessionDuration = currentTime - newSessionStart;
+      const sessionDuration =
+        currentTime - new Date(user.current_session_start);
       newLongestCodingSession = Math.max(
         newLongestCodingSession,
         sessionDuration
@@ -81,30 +109,29 @@ module.exports.logCodingTime = async (req, res) => {
     }
 
     // Prepare date keys for daily/weekly updates.
-    const today = getDailyKey(); // Assuming this returns a date key or similar value for today.
+    const today = getDailyKey();
     const lastWeek = moment().utc().subtract(7, "days").startOf("day").toDate();
 
     // Atomic update for UserTime using an aggregation pipeline.
-    // We update all the timing fields as before and, additionally,
-    // set the current_session_start and longest_coding_session using the values computed above.
+    // Replace all occurrences of timeSpent with effectiveTimeSpent.
     const updatedUser = await UserTime.findOneAndUpdate(
       { token },
       [
         {
           $set: {
-            total_time: { $add: ["$total_time", timeSpent] },
+            total_time: { $add: ["$total_time", effectiveTimeSpent] },
             daily_time: {
               $cond: {
                 if: { $lt: ["$last_updated", today] },
-                then: timeSpent,
-                else: { $add: ["$daily_time", timeSpent] },
+                then: effectiveTimeSpent,
+                else: { $add: ["$daily_time", effectiveTimeSpent] },
               },
             },
             weekly_time: {
               $cond: {
                 if: { $lt: ["$last_updated", lastWeek] },
-                then: timeSpent,
-                else: { $add: ["$weekly_time", timeSpent] },
+                then: effectiveTimeSpent,
+                else: { $add: ["$weekly_time", effectiveTimeSpent] },
               },
             },
             last_updated: currentTime,
@@ -117,9 +144,9 @@ module.exports.logCodingTime = async (req, res) => {
                     [
                       {
                         language,
-                        daily_time: timeSpent,
-                        weekly_time: timeSpent,
-                        total_time: timeSpent,
+                        daily_time: effectiveTimeSpent,
+                        weekly_time: effectiveTimeSpent,
+                        total_time: effectiveTimeSpent,
                         last_updated: currentTime,
                       },
                     ],
@@ -137,19 +164,26 @@ module.exports.logCodingTime = async (req, res) => {
                           daily_time: {
                             $cond: {
                               if: { $lt: ["$$lang.last_updated", today] },
-                              then: timeSpent,
-                              else: { $add: ["$$lang.daily_time", timeSpent] },
+                              then: effectiveTimeSpent,
+                              else: {
+                                $add: ["$$lang.daily_time", effectiveTimeSpent],
+                              },
                             },
                           },
                           weekly_time: {
                             $cond: {
                               if: { $lt: ["$$lang.last_updated", lastWeek] },
-                              then: timeSpent,
-                              else: { $add: ["$$lang.weekly_time", timeSpent] },
+                              then: effectiveTimeSpent,
+                              else: {
+                                $add: [
+                                  "$$lang.weekly_time",
+                                  effectiveTimeSpent,
+                                ],
+                              },
                             },
                           },
                           total_time: {
-                            $add: ["$$lang.total_time", timeSpent],
+                            $add: ["$$lang.total_time", effectiveTimeSpent],
                           },
                           last_updated: currentTime,
                         },
@@ -160,7 +194,7 @@ module.exports.logCodingTime = async (req, res) => {
                 },
               },
             },
-            // Update our session fields
+            // Update session fields.
             current_session_start: newSessionStart,
             longest_coding_session: newLongestCodingSession,
           },
@@ -170,37 +204,28 @@ module.exports.logCodingTime = async (req, res) => {
     );
 
     if (!updatedUser) {
-      return res.status(404).json({ error: "User session not found" });
+      return res.status(404).json({ error: "User session not found." });
     }
 
-    // Update DailyTime with an atomic operation (as before).
+    // Update DailyTime with an atomic operation.
     await DailyTime.findOneAndUpdate(
       { userId: updatedUser.userId, date: today },
       {
-        $inc: { totalTime: timeSpent },
+        $inc: { totalTime: effectiveTimeSpent },
         $setOnInsert: { userId: updatedUser.userId, date: today },
       },
       { upsert: true }
     );
 
-    // Updating User Level
-
-    // currentXP is calculated from total_time (assumed to be in milliseconds),
-    // so convert to minutes.
+    // Updating User Level.
+    // Here we assume total_time is in milliseconds, so we convert to minutes.
     const currentXP = updatedUser.total_time / (60 * 1000);
-    // Calculate the new level based on the updated XP
     const newLevel = calculateLevel(currentXP);
-
-    // Determine XP thresholds for the current level and the next level.
     const currentLevelThreshold = getXpForLevel(newLevel);
     const nextLevelThreshold = getXpForLevel(newLevel + 1);
-
-    // Calculate XP progress within the current level.
     const xpIntoCurrentLevel = currentXP - currentLevelThreshold;
-    // XP required to level up.
     const xpRequiredForNextLevel = nextLevelThreshold - currentLevelThreshold;
 
-    // If the new level is higher than the current stored level, update it and the XP is upadted each time.
     await UserTime.updateOne(
       { token },
       {
@@ -208,9 +233,7 @@ module.exports.logCodingTime = async (req, res) => {
           "level.xpAtCurrentLevel": xpIntoCurrentLevel,
           "level.xpForNextLevel": xpRequiredForNextLevel,
         },
-        $max: {
-          "level.current": newLevel,
-        },
+        $max: { "level.current": newLevel },
       }
     );
 

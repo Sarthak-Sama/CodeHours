@@ -1,6 +1,10 @@
-// Import VS Code API and axios for HTTP requests
+// Import VS Code API, axios for HTTP requests, and crypto for a unique instance ID
 const vscode = require("vscode");
 const axios = require("axios");
+const { randomBytes } = require("crypto");
+
+// Generate a unique identifier for this VS Code instance
+const instanceId = randomBytes(16).toString("hex");
 
 // Constants
 const TIMER_UPDATE_INTERVAL = 2 * 60 * 1000; // 2 minutes in milliseconds
@@ -28,11 +32,15 @@ let currentLanguage =
     : null;
 
 /**
- * Sends coding time data to the server with the given language and time spent.
+ * Sends coding time data to the server with the given language and time interval.
+ * This function now sends both a startTime and endTime so that the backend can
+ * deduplicate overlapping intervals.
+ *
  * @param {string} language The programming language.
- * @param {number} timeSpent Time spent coding in milliseconds.
+ * @param {number} startTime The timestamp when this logging interval started.
+ * @param {number} endTime The timestamp when this logging interval ended.
  */
-const logCodingTime = async (language, timeSpent) => {
+const logCodingTime = async (language, startTime, endTime) => {
   if (!sessionKey) {
     console.error("Session key is not set. Unable to log coding time.");
     return;
@@ -48,11 +56,17 @@ const logCodingTime = async (language, timeSpent) => {
     const response = await axios.post(ENDPOINT, {
       token: sessionKey,
       language: language,
-      timeSpent: timeSpent,
+      startTime: startTime, // The timestamp when logging started
+      endTime: endTime, // The timestamp when logging ended
+      instanceId: instanceId, // Unique identifier for this VS Code instance
     });
 
     if (response.status === 200) {
-      console.log(`Coding time logged for ${language}: ${timeSpent}ms.`);
+      console.log(
+        `Coding time logged for ${language} from ${new Date(
+          startTime
+        ).toISOString()} to ${new Date(endTime).toISOString()}.`
+      );
     } else {
       console.error("Failed to log coding time:", response.statusText);
     }
@@ -74,13 +88,14 @@ const sendHeartbeat = (language) => {
 };
 
 /**
- * Logs the time accumulated for the current language session and resets the timer.
+ * Logs the time accumulated for the current language session as an interval
+ * from languageStartTime to the current time and then resets the timer.
  */
 const logCurrentLanguageTime = () => {
   const now = Date.now();
-  const duration = now - languageStartTime;
-  if (currentLanguage && duration > 0) {
-    logCodingTime(currentLanguage, duration);
+  // Only log if there is a positive interval
+  if (currentLanguage && now > languageStartTime) {
+    logCodingTime(currentLanguage, languageStartTime, now);
   }
   languageStartTime = now; // Reset for the next session
 };
@@ -178,7 +193,7 @@ const fetchInitialCodingTime = async () => {
       params: { token: sessionKey },
     });
     if (response.status === 200) {
-      // Assuming the backend returns an object with a "totalTime" property (in milliseconds)
+      // Assuming the backend returns an object with a "daily_time" property (in milliseconds)
       totalCodingTime = response.data.daily_time || 0;
       console.log(`Fetched initial coding time: ${totalCodingTime}ms.`);
     } else {
