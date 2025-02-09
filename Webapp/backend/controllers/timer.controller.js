@@ -77,6 +77,11 @@ module.exports.logCodingTime = async (req, res) => {
     // Use the incoming endTimestamp as the current time for logging.
     const currentTime = endTimestamp;
 
+    // Define a threshold for rolling 24 hours.
+    const twentyFourHoursAgo = new Date(
+      currentTime.getTime() - 24 * 60 * 60 * 1000
+    );
+
     // Define a threshold (in milliseconds) for a gap that ends a session.
     // Since logs are sent every 2 minutes, a gap longer than 3 minutes indicates a new session.
     const THRESHOLD_MS = 3 * 60 * 1000; // 3 minutes
@@ -115,7 +120,6 @@ module.exports.logCodingTime = async (req, res) => {
     const lastWeek = moment().utc().subtract(7, "days").startOf("day").toDate();
 
     // Atomic update for UserTime using an aggregation pipeline.
-    // Replace all occurrences of timeSpent with effectiveTimeSpent.
     const updatedUser = await UserTime.findOneAndUpdate(
       { token },
       [
@@ -124,7 +128,7 @@ module.exports.logCodingTime = async (req, res) => {
             total_time: { $add: ["$total_time", effectiveTimeSpent] },
             daily_time: {
               $cond: {
-                if: { $lt: ["$last_updated", today] },
+                if: { $lt: ["$last_updated", twentyFourHoursAgo] },
                 then: effectiveTimeSpent,
                 else: { $add: ["$daily_time", effectiveTimeSpent] },
               },
@@ -165,7 +169,12 @@ module.exports.logCodingTime = async (req, res) => {
                           language: "$$lang.language",
                           daily_time: {
                             $cond: {
-                              if: { $lt: ["$$lang.last_updated", today] },
+                              if: {
+                                $lt: [
+                                  "$$lang.last_updated",
+                                  twentyFourHoursAgo,
+                                ],
+                              },
                               then: effectiveTimeSpent,
                               else: {
                                 $add: ["$$lang.daily_time", effectiveTimeSpent],

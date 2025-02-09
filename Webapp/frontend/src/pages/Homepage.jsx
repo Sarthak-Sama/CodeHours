@@ -8,7 +8,7 @@ import { UserContext } from "../context/Context";
 import LeaderboardElement from "../components/partials/LeaderboardElement";
 
 function Homepage({ formatTime }) {
-  const { user, fetchedUser } = useContext(UserContext);
+  const { user, fetchedUser, fetchUserData } = useContext(UserContext);
   const [leaderboardData, setLeaderboardData] = useState(null);
   const [userRank, setUserRank] = useState(null);
 
@@ -23,6 +23,7 @@ function Homepage({ formatTime }) {
 
   useEffect(() => {
     fetchLeaderboard();
+    if (user) fetchUserData(user.id);
   }, [user, fetchedUser]);
 
   useEffect(() => {

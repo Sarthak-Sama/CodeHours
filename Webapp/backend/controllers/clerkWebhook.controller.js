@@ -108,7 +108,7 @@ module.exports.handleUserWebhook = async (req, res) => {
       }
     } else if (eventType === "user.updated") {
       // Update the user's profile picture (and optionally username/fullname)
-      const { id: userId, image_url: pfpUrl } = eventData;
+      const { id: userId, username, image_url: pfpUrl } = eventData;
       if (!userId) {
         return res
           .status(400)
@@ -125,6 +125,7 @@ module.exports.handleUserWebhook = async (req, res) => {
         // Update pfpUrl only if it's provided and valid
         if (pfpUrl && typeof pfpUrl === "string") {
           existingUser.pfpUrl = pfpUrl;
+          existingUser.username = username || existingUser.username;
           console.log("[DEBUG] Setting pfpUrl to:", pfpUrl);
         } else {
           console.log("[DEBUG] pfpUrl not provided or invalid:", pfpUrl);
@@ -133,6 +134,7 @@ module.exports.handleUserWebhook = async (req, res) => {
         existingUser.last_updated = moment().utc();
 
         // Explicitly mark the field as modified (for nested or mixed schemas)
+        existingUser.markModified("username");
         existingUser.markModified("pfpUrl");
 
         // Save and log the result
