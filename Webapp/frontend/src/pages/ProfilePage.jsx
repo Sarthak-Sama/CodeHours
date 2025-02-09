@@ -26,6 +26,25 @@ function ProfilePage({ formatTime }) {
 
   if (!id && !user) navigate("/");
 
+  const utcMidnight = new Date(
+    Date.UTC(
+      new Date().getUTCFullYear(),
+      new Date().getUTCMonth(),
+      new Date().getUTCDate(),
+      0,
+      0,
+      0
+    )
+  );
+
+  // Format the date and time according to the user's locale and timezone
+  const formattedTime = new Intl.DateTimeFormat("en-US", {
+    hour: "numeric",
+    minute: "numeric",
+    second: "numeric",
+    timeZoneName: "short",
+  }).format(utcMidnight);
+
   useEffect(() => {
     if (fetchedUser?.about) setAboutSectionContent(fetchedUser.about);
   }, [fetchedUser]);
@@ -303,6 +322,9 @@ function ProfilePage({ formatTime }) {
               <h3 className="mt-15 font-bold text-[5vw] sm:text-[3.5vw] md:text-[2vw]">
                 Daily Activity:
               </h3>
+              <h4 className="text-gray-600">
+                New day starts at: {formattedTime.slice(0, 10)} in your timezone
+              </h4>
               <div className="w-full border-2 p-5 rounded-lg md:w-[82%] mx-auto flex justify-center mt-10 scale-100 md:scale-[1.1]">
                 {dailyData.length > 0 ? (
                   // Wrap in an overflow container for horizontal scrolling on small screens

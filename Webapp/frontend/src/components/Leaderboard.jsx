@@ -19,7 +19,7 @@ function Leaderboard({ dataArray, formatTime }) {
         <span className="w-[10%] text-center hidden lg:block">Level</span>
       </div>
       {dataArray.map((data, i) => (
-        <div className="w-full flex justify-between items-center">
+        <div key={i} className="w-full flex justify-between items-center">
           <div className="flex items-center justify-center border-2  h-[3.5rem] rounded-[1.75vw] sm:rounded-[1.25vw] md:rounded-[1vw] lg:rounded-[.75vw] aspect-square rounded-xl mx-[2%] text-xl">
             #{i + 1}
           </div>

@@ -99,8 +99,6 @@ function Context({ children }) {
   useEffect(() => {
     if (user) {
       fetchUserData(user.id);
-    } else {
-      console.log("user not present");
     }
   }, [user]);
 

@@ -77,22 +77,27 @@ export default function StatsComponent({
     );
     const now = new Date();
 
-    // Helper: Check if two dates are the same day.
-    const isSameDay = (d1, d2) =>
-      d1.getFullYear() === d2.getFullYear() &&
-      d1.getMonth() === d2.getMonth() &&
-      d1.getDate() === d2.getDate();
+    // Helper: Check if two dates are the same day in UTC.
+    const isSameDayUTC = (d1, d2) =>
+      d1.getUTCFullYear() === d2.getUTCFullYear() &&
+      d1.getUTCMonth() === d2.getUTCMonth() &&
+      d1.getUTCDate() === d2.getUTCDate();
 
     // --- WEEK DATA: Last 7 days ---
     const weekDates = Array.from({ length: 7 }, (_, i) => {
-      const d = new Date(now);
-      d.setDate(now.getDate() - (6 - i)); // oldest date first
+      const d = new Date(
+        Date.UTC(
+          now.getUTCFullYear(),
+          now.getUTCMonth(),
+          now.getUTCDate() - (6 - i)
+        )
+      );
       return d;
     });
     const weekData = weekDates.map((dateObj) => {
       const found = sortedData.find((record) => {
         const recordDate = new Date(record.date);
-        return isSameDay(recordDate, dateObj);
+        return isSameDayUTC(recordDate, dateObj);
       });
       return {
         name: dateObj.toLocaleDateString("en-US", { weekday: "short" }),
@@ -102,14 +107,19 @@ export default function StatsComponent({
 
     // --- MONTH DATA: Last 30 days ---
     const monthDates = Array.from({ length: 30 }, (_, i) => {
-      const d = new Date(now);
-      d.setDate(now.getDate() - (29 - i));
+      const d = new Date(
+        Date.UTC(
+          now.getUTCFullYear(),
+          now.getUTCMonth(),
+          now.getUTCDate() - (29 - i)
+        )
+      );
       return d;
     });
     const monthData = monthDates.map((dateObj) => {
       const found = sortedData.find((record) => {
         const recordDate = new Date(record.date);
-        return isSameDay(recordDate, dateObj);
+        return isSameDayUTC(recordDate, dateObj);
       });
       return {
         // X-axis: abbreviated month and day
@@ -132,7 +142,7 @@ export default function StatsComponent({
     sortedData.forEach((record) => {
       const dateObj = new Date(record.date);
       // Group by year-month using month index.
-      const key = `${dateObj.getFullYear()}-${dateObj.getMonth()}`;
+      const key = `${dateObj.getUTCFullYear()}-${dateObj.getUTCMonth()}`;
       if (!totalDataMap[key]) {
         totalDataMap[key] = { totalTime: 0, date: dateObj };
       }

@@ -2,7 +2,7 @@ import React from "react";
 
 function TopCards({ rank1, rank2, rank3, formatTime }) {
   return (
-    <div className=" flex flex-col items-center xl:flex-row justify-center pt-[5vh] mb:pt-[10vh] mb-[10vh] gap-5">
+    <div className="flex flex-col items-center xl:flex-row justify-center pt-[5vh] mb:pt-[10vh] mb-[10vh] gap-5">
       <div
         className="w-[80%] xl:w-[20%] h-[22vh] xl:h-[25vh] translate-y-[39.5vh] xl:translate-y-[0] xl:mt-[20vh]"
         style={{
@@ -21,11 +21,11 @@ function TopCards({ rank1, rank2, rank3, formatTime }) {
           id="pos-3-card"
           className="border-2 h-full border-b-0 rounded-t-xl flex flex-col items-center"
         >
-          <h2 className="font-[900] text-[7vw] sm:text-[5vw] md:text-[4vw] lg:text-[3vw] xl:text-[1.5vw] mt-3">
+          <h2 className="font-[900] text-[7vw] sm:text-[5vw] md:text-[3vw] xl:text-[1.5vw] mt-3">
             #3 Sweatlord
           </h2>
-          <div className="flex items-center gap-3 mt-5">
-            <div className="w-[15vw] sm:w-[10vw] md:w-[7vw] lg:w-[5vw] xl:w-[3vw] aspect-square rounded-full">
+          <div className="flex items-center gap-3 xl:mt-5">
+            <div className="w-[15vw] sm:w-[5vw] xl:w-[3vw] aspect-square rounded-full">
               <img
                 src={
                   rank3
@@ -35,7 +35,7 @@ function TopCards({ rank1, rank2, rank3, formatTime }) {
                 className="w-full h-full rounded-full position-center object-cover"
               />
             </div>
-            <h3 className="text-[6vw] sm:text-[5vw] md:text-[3vw] lg:text-[2.25vw] xl:text-[1.5vw]">
+            <h3 className="text-[6vw] sm:text-[2.25vw] md:text-[2.25vw] xl:text-[1.5vw]">
               {rank3 ? rank3.username : "None"}
             </h3>
           </div>
@@ -59,11 +59,11 @@ function TopCards({ rank1, rank2, rank3, formatTime }) {
           id="pos-1-card"
           className="bg-[#f5f5f5] border-2 border-b-0 h-full rounded-t-xl flex flex-col items-center"
         >
-          <h2 className="font-[900] text-[7vw] sm:text-[5vw] md:text-[4vw] lg:text-[3vw] xl:text-[2.25vw] mt-3">
+          <h2 className="font-[900] text-[7vw] sm:text-[3vw] md:text-[3vw] xl:text-[2.25vw] mt-3">
             #1 Cracked
           </h2>
           <div className="flex flex-row xl:flex-col items-center gap-5 mt-5">
-            <div className="w-[15vw]  mt-5 sm:w-[10vw] md:w-[7vw] lg:w-[5vw] xl:w-[5vw] h-[15vw]  sm:h-[10vw] md:h-[7vw] lg:h-[5vw] xl:h-[5vw] rounded-full">
+            <div className="w-[15vw] xl:mt-5 sm:w-[5vw] md:w-[5vw] xl:w-[5vw] h-[15vw] sm:h-[5vw] md:h-[5vw] xl:h-[5vw] rounded-full">
               <img
                 src={
                   rank1
@@ -73,7 +73,7 @@ function TopCards({ rank1, rank2, rank3, formatTime }) {
                 className="w-full h-full rounded-full object-center object-cover"
               />
             </div>
-            <h3 className="text-[6vw] sm:text-[5vw] md:text-[3vw] lg:text-[2.25vw] xl:text-[2vw]">
+            <h3 className="text-[6vw] sm:text-[2.25vw] md:text-[2.25vw] xl:text-[2vw]">
               {rank1 ? rank1.username : "None"}
             </h3>
           </div>
@@ -97,11 +97,11 @@ function TopCards({ rank1, rank2, rank3, formatTime }) {
           id="pos-2-card"
           className="border-2 border-b-0 h-full rounded-t-xl flex flex-col items-center"
         >
-          <h2 className="font-[900] text-[7vw] sm:text-[5vw] md:text-[4vw] lg:text-[3vw] xl:text-[1.75vw] mt-3">
+          <h2 className="font-[900] text-[7vw] sm:text-[3vw] md:text-[3vw] xl:text-[1.75vw] mt-3">
             #2 Overclocked
           </h2>
-          <div className="flex items-center gap-3 mt-5">
-            <div className="w-[15vw] sm:w-[10vw] md:w-[7vw] lg:w-[5vw] xl:w-[4vw] aspect-square rounded-full">
+          <div className="flex items-center gap-3 xl:mt-5">
+            <div className="w-[15vw] sm:w-[5vw] md:w-[5vw] xl:w-[4vw] aspect-square rounded-full">
               <img
                 src={
                   rank2
@@ -111,7 +111,7 @@ function TopCards({ rank1, rank2, rank3, formatTime }) {
                 className="w-full h-full rounded-full position-center object-cover"
               />
             </div>
-            <h3 className="text-[6vw] sm:text-[5vw] md:text-[3vw] lg:text-[2.25vw] xl:text-[1.75vw]">
+            <h3 className="text-[6vw] sm:text-[2.25vw] md:text-[2.25vw] xl:text-[1.75vw]">
               {rank2 ? rank2.username : "None"}
             </h3>
           </div>
