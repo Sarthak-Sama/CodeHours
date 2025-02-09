@@ -200,11 +200,14 @@ function ProfilePage({ formatTime }) {
                         <div className="w-full mt-3 relative">
                           <hr className="absolute w-[100%] border-4 rounded-full" />
                           <hr
-                            className={`absolute border-[#e94545] w-[${
-                              (fetchedUser.level.xpAtCurrentLevel /
-                                fetchedUser.level.xpForNextLevel) *
-                              100
-                            }%] border-4 rounded-full`} // Calculate the progress percentage
+                            className={`absolute border-[#e94545] border-4 rounded-full`} // Calculate the progress percentage
+                            style={{
+                              width: `${
+                                (fetchedUser.level.xpAtCurrentLevel /
+                                  fetchedUser.level.xpForNextLevel) *
+                                100
+                              }%`,
+                            }}
                           />
                           <h4 className="w-full text-center pt-5">{`${Math.floor(
                             fetchedUser.level.xpAtCurrentLevel
