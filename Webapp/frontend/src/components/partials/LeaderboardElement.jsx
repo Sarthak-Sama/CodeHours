@@ -12,7 +12,9 @@ function LeaderboardElement({ data, formatTime }) {
     .slice(0, 6);
 
   const filteredLanguages = topLanguages.filter(
-    (language) => new Date(language.last_updated).getTime() >= oneDayAgoUTC
+    (language) =>
+      new Date(language.last_updated).getTime() >= oneDayAgoUTC &&
+      language.daily_time > 10 * 60 * 1000 // 1 minute
   );
 
   return (

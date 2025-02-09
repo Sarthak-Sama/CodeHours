@@ -4,7 +4,7 @@ function TopCards({ rank1, rank2, rank3, formatTime }) {
   return (
     <div className="flex flex-col items-center xl:flex-row justify-center pt-[5vh] mb:pt-[10vh] mb-[10vh] gap-5">
       <div
-        className="w-[80%] xl:w-[20%] h-[22vh] xl:h-[25vh] translate-y-[39.5vh] xl:translate-y-[0] xl:mt-[20vh]"
+        className="w-[80%] xl:w-[20%] h-[22vh] xl:h-[25vh] translate-y-[40vh] xl:translate-y-[0] xl:mt-[20vh]"
         style={{
           maskImage:
             "linear-gradient(180deg, black 0%, black 60%, transparent 100%)",
@@ -24,12 +24,12 @@ function TopCards({ rank1, rank2, rank3, formatTime }) {
           <h2 className="font-[900] text-[7vw] sm:text-[5vw] md:text-[3vw] xl:text-[1.5vw] mt-3">
             #3 Sweatlord
           </h2>
-          <div className="flex items-center gap-3 xl:mt-5">
-            <div className="w-[15vw] sm:w-[5vw] xl:w-[3vw] aspect-square rounded-full">
+          <div className="flex flex-wrap justify-center items-center gap-3 xl:mt-5 mt-2">
+            <div className="w-[15vw] sm:w-[5vw] xl:w-[3vw] aspect-square rounded-full overflow-hidden">
               <img
                 src={
                   rank3
-                    ? rank3.pfpUrl || "/images/user"
+                    ? rank3.pfpUrl || "/images/userIcon.png"
                     : "/images/userIcon.png"
                 }
                 className="w-full h-full rounded-full position-center object-cover"
@@ -62,12 +62,12 @@ function TopCards({ rank1, rank2, rank3, formatTime }) {
           <h2 className="font-[900] text-[7vw] sm:text-[3vw] md:text-[3vw] xl:text-[2.25vw] mt-3">
             #1 Cracked
           </h2>
-          <div className="flex flex-row xl:flex-col items-center gap-5 mt-5">
+          <div className="flex flex-wrap justify-center flex-row xl:flex-col items-center gap-5 mt-5">
             <div className="w-[15vw] xl:mt-5 sm:w-[5vw] md:w-[5vw] xl:w-[5vw] h-[15vw] sm:h-[5vw] md:h-[5vw] xl:h-[5vw] rounded-full">
               <img
                 src={
                   rank1
-                    ? rank1.pfpUrl || "/images/user"
+                    ? rank1.pfpUrl || "/images/userIcon.png"
                     : "/images/userIcon.png"
                 }
                 className="w-full h-full rounded-full object-center object-cover"
@@ -100,7 +100,7 @@ function TopCards({ rank1, rank2, rank3, formatTime }) {
           <h2 className="font-[900] text-[7vw] sm:text-[3vw] md:text-[3vw] xl:text-[1.75vw] mt-3">
             #2 Overclocked
           </h2>
-          <div className="flex items-center gap-3 xl:mt-5">
+          <div className="flex flex-wrap justify-center items-center gap-3 xl:mt-5 mt-4">
             <div className="w-[15vw] sm:w-[5vw] md:w-[5vw] xl:w-[4vw] aspect-square rounded-full">
               <img
                 src={

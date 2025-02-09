@@ -1,12 +1,25 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useContext } from "react";
+import { UserContext } from "../context/Context";
 
-const LanguageTimeDisplay = ({ langDataArray, formatTime, formatLanguage }) => {
-  // Set the initial selected language to the first element if available.
-  const [selectedLang, setSelectedLang] = useState(null);
+const LanguageTimeDisplay = ({ langDataArray, formatTime }) => {
+  const { formatLanguage, allowedLanguages } = useContext(UserContext);
+
+  // Only display languages whose name is in the allowedLanguages list and daily_time > 0.
+  const filteredLanguages = langDataArray.filter(
+    (langData) =>
+      allowedLanguages.includes(langData.language.trim().toLowerCase()) &&
+      langData.daily_time > 5 * 60 * 1000 // 5 minutes
+  );
+
+  const [selectedLang, setSelectedLang] = useState(
+    filteredLanguages[0] || null
+  );
 
   useEffect(() => {
-    if (langDataArray && langDataArray.length > 0) {
-      setSelectedLang(langDataArray[0]);
+    if (filteredLanguages && filteredLanguages.length > 0) {
+      setSelectedLang(filteredLanguages[0]);
+    } else {
+      setSelectedLang(null);
     }
   }, [langDataArray]);
 
@@ -15,9 +28,8 @@ const LanguageTimeDisplay = ({ langDataArray, formatTime, formatLanguage }) => {
       <h2 className="font-[900] text-[5vw] sm:text-[3vw] md:text-[1.5vw] mb-5">
         Language Stats:
       </h2>
-      {/* Language selector */}
       <div className="flex flex-wrap mb-5 gap-4">
-        {langDataArray.map((langData) => {
+        {filteredLanguages.map((langData) => {
           const isSelected = selectedLang && selectedLang._id === langData._id;
           return (
             <div
@@ -32,8 +44,6 @@ const LanguageTimeDisplay = ({ langDataArray, formatTime, formatLanguage }) => {
           );
         })}
       </div>
-
-      {/* Display data for the selected language */}
       {selectedLang && (
         <div>
           <div>

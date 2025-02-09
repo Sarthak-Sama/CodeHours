@@ -7,6 +7,7 @@ import { SignIn } from "@clerk/clerk-react";
 import PromptComponent from "./components/PromptComponent";
 import ComponentPage from "./pages/ComponentPage";
 import LoadingPage from "./pages/LoadingPage";
+import TutorialPage from "./pages/TutorialPage";
 
 function App() {
   const [isLoading, setIsLoading] = useState(true);
@@ -59,6 +60,7 @@ function App() {
               element={<ProfilePage formatTime={formatTime} />}
             />
             <Route path="/component" element={<ComponentPage />} />
+            <Route path="/tutorial" element={<TutorialPage />} />
           </Routes>
         </div>
         {isLoginBoxVisible && (

@@ -4,87 +4,77 @@ import { useUser } from "@clerk/clerk-react";
 
 export const UserContext = createContext();
 
+// Comprehensive mapping of language keys to display names.
+const languageMapping = {
+  javascript: "JavaScript",
+  javascriptreact: "JSX",
+  typescript: "TypeScript",
+  typescriptreact: "TSX",
+  html: "HTML",
+  css: "CSS",
+  json: "JSON",
+  python: "Python",
+  java: "Java",
+  csharp: "C#",
+  cpp: "C++",
+  "c++": "C++",
+  php: "PHP",
+  ruby: "Ruby",
+  rust: "Rust",
+  go: "Go",
+  swift: "Swift",
+  kotlin: "Kotlin",
+  sass: "Sass/SCSS",
+  scss: "Sass/SCSS",
+  sql: "SQL",
+  bash: "Bash",
+  shell: "Bash",
+  markdown: "Markdown",
+  docker: "Docker",
+  kubernetes: "Kubernetes",
+  graphql: "GraphQL",
+  node: "Node.js",
+  nodejs: "Node.js",
+  express: "Express",
+  nextjs: "Next.js",
+  nestjs: "NestJS",
+  vue: "Vue.js",
+  vuejs: "Vue.js",
+  angular: "Angular",
+  reactnative: "React Native",
+  "plain text": "Plain Text",
+  plaintext: "Plain Text",
+  txt: "Plain Text",
+  xml: "XML",
+  yaml: "YAML",
+  yml: "YAML",
+  coffeescript: "CoffeeScript",
+  coffee: "CoffeeScript",
+  dart: "Dart",
+  elixir: "Elixir",
+  erlang: "Erlang",
+  haskell: "Haskell",
+  lua: "Lua",
+  objectivec: "Objective-C",
+  "objective-c": "Objective-C",
+  perl: "Perl",
+  r: "R",
+  scala: "Scala",
+  vim: "Vim",
+  viml: "Vim script",
+  shellscript: "Shell Script",
+};
+
+export const allowedLanguages = Object.keys(languageMapping);
+
 function Context({ children }) {
   const { user } = useUser();
   const [fetchedUser, setFetchedUser] = useState(null);
   const [promptState, setPromptState] = useState("error");
   const [promptMessage, setPromptMessage] = useState("");
 
-  const formatLanguage = (lang) => {
-    const lowerLang = lang.toLowerCase();
-
-    switch (lowerLang) {
-      case "javascriptreact":
-        return "JSX";
-      case "typescriptreact":
-        return "TSX";
-      case "typescript":
-        return "TS";
-      case "javascript":
-        return "JS";
-      case "html":
-        return "HTML";
-      case "css":
-        return "CSS";
-      case "json":
-        return "JSON";
-      case "python":
-        return "Python";
-      case "java":
-        return "Java";
-      case "csharp":
-        return "C#";
-      case "php":
-        return "PHP";
-      case "ruby":
-        return "Ruby";
-      case "rust":
-        return "Rust";
-      case "go":
-        return "Go";
-      case "swift":
-        return "Swift";
-      case "kotlin":
-        return "Kotlin";
-      case "sass":
-      case "scss":
-        return "Sass/SCSS";
-      case "sql":
-        return "SQL";
-      case "bash":
-        return "Bash";
-      case "markdown":
-        return "Markdown";
-      case "docker":
-        return "Docker";
-      case "kubernetes":
-        return "Kubernetes";
-      case "graphql":
-        return "GraphQL";
-      case "node":
-      case "nodejs":
-        return "Node.js";
-      case "express":
-        return "Express";
-      case "nextjs":
-        return "Next.js";
-      case "nestjs":
-        return "NestJS";
-      case "vue":
-      case "vuejs":
-        return "Vue.js";
-      case "angular":
-        return "Angular";
-      case "reactnative":
-        return "React Native";
-      default:
-        // Capitalize the first letter for any other languages.
-        return lang.charAt(0).toUpperCase() + lang.slice(1).toLowerCase();
-    }
-  };
-
   const fetchUserData = async (otherUserId) => {
-    if (!otherUserId) return; // Prevents unnecessary execution
+    if (!otherUserId) return;
 
     try {
       const response = await axios.post("/api/fetchUser", {
@@ -112,7 +102,14 @@ function Context({ children }) {
         setPromptState,
         setPromptMessage,
         fetchUserData,
-        formatLanguage,
+        formatLanguage: (lang) => {
+          const lowerLang = lang.trim().toLowerCase();
+          return (
+            languageMapping[lowerLang] ||
+            lowerLang.charAt(0).toUpperCase() + lowerLang.slice(1)
+          );
+        },
+        allowedLanguages,
       }}
     >
       {children}
