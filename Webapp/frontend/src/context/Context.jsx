@@ -70,17 +70,23 @@ export const allowedLanguages = Object.keys(languageMapping);
 function Context({ children }) {
   const { user } = useUser();
   const [fetchedUser, setFetchedUser] = useState(null);
+  const [viewingUser, setViewingUser] = useState(null);
   const [promptState, setPromptState] = useState("error");
   const [promptMessage, setPromptMessage] = useState("");
 
   const fetchUserData = async (otherUserId) => {
-    if (!otherUserId) return;
-
     try {
-      const response = await axios.post("/api/fetchUser", {
-        userId: otherUserId,
-      });
-      setFetchedUser(response.data.user);
+      if (!otherUserId) {
+        const response = await axios.post("/api/fetchUser", {
+          userId: user.id,
+        });
+        setFetchedUser(response.data.user);
+      } else {
+        const response = await axios.post("/api/fetchUser", {
+          userId: otherUserId,
+        });
+        setViewingUser(response.data.user);
+      }
     } catch (error) {
       console.error("Error fetching user data:", error);
     }
@@ -88,7 +94,7 @@ function Context({ children }) {
 
   useEffect(() => {
     if (user) {
-      fetchUserData(user.id);
+      fetchUserData();
     }
   }, [user]);
 
@@ -97,6 +103,9 @@ function Context({ children }) {
       value={{
         user,
         fetchedUser,
+        setFetchedUser,
+        viewingUser,
+        setViewingUser,
         promptState,
         promptMessage,
         setPromptState,

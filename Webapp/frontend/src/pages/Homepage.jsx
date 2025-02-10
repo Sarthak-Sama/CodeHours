@@ -23,7 +23,9 @@ function Homepage({ formatTime }) {
 
   useEffect(() => {
     fetchLeaderboard();
-    if (user) fetchUserData(user.id);
+    if (user) {
+      fetchUserData();
+    }
   }, [user, fetchedUser]);
 
   useEffect(() => {

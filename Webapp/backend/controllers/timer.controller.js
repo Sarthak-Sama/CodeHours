@@ -272,10 +272,21 @@ module.exports.fetchUser = async (req, res) => {
     if (!user) {
       return res.status(404).json({ error: "User not found" });
     }
+    //Calculate weekly time
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
+    const weeklyData = await DailyTime.aggregate([
+      { $match: { userId, data: { $gte: sevenDaysAgo } } },
+      { $group: { _id: null, totalTime: { $sum: "$totalTime" } } },
+    ]);
+    const weeklyTime = weeklyData.length > 0 ? weeklyData[0].totalTime : 0;
     return res.status(200).json({
       message: "User fetched successfully",
-      user,
+      user: {
+        ...user.toObject(),
+        weekly_time: weeklyTime,
+      },
     });
   } catch (error) {
     console.error("Error fetching user:", error);

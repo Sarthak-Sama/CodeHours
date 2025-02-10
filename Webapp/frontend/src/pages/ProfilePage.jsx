@@ -12,6 +12,8 @@ function ProfilePage({ formatTime }) {
   const {
     user,
     fetchedUser,
+    viewingUser,
+    setViewingUser,
     fetchUserData,
     formatLanguage,
     setPromptState,
@@ -52,6 +54,8 @@ function ProfilePage({ formatTime }) {
   useEffect(() => {
     if (id) {
       fetchUserData(id);
+    } else {
+      setViewingUser(fetchedUser);
     }
   }, [id]);
 
@@ -108,7 +112,7 @@ function ProfilePage({ formatTime }) {
   const fetchDailyData = async () => {
     try {
       const response = await axios.get(
-        `/api/activityData?userId=${fetchedUser.userId}`
+        `/api/activityData?userId=${viewingUser.userId}`
       ); // Send userId as query param
       setDailyData(response.data.data); // Update state
     } catch (error) {
@@ -123,7 +127,7 @@ function ProfilePage({ formatTime }) {
   const updateAboutSection = async () => {
     try {
       await axios.post("/api/updateAboutSection", {
-        userId: fetchedUser.userId,
+        userId: viewingUser.userId,
         content: aboutSectionContent,
       });
       setIsSubmitting(false);
@@ -135,16 +139,17 @@ function ProfilePage({ formatTime }) {
   };
 
   useEffect(() => {
-    if (fetchedUser?.userId) fetchDailyData(); // Ensure user is available before fetching
-  }, [fetchedUser]);
+    if (viewingUser?.userId) fetchDailyData(); // Ensure user is available before fetching
+  }, [viewingUser]);
 
   // Calculate the longest daily streak.
   // Ensure that the dailyData objects have properties: date and codingTime (in minutes).
   const longestDailyStreak = calculateLongestStreak(dailyData);
 
+  console.log(viewingUser);
   return (
     <div className="w-full h-full">
-      {fetchedUser ? (
+      {viewingUser ? (
         <div className="px-10">
           <div className="flex flex-col md:flex-row md:justify-between w-full">
             <div className="w-[100%] md:w-[50%]">
@@ -154,14 +159,14 @@ function ProfilePage({ formatTime }) {
                   className="w-[15vw] sm:w-[8vw] md:w-[4.7vw] aspect-square rounded-full bg-red-200"
                 >
                   <img
-                    src={id ? fetchedUser?.pfpUrl : user.imageUrl}
+                    src={id ? viewingUser?.pfpUrl : user.imageUrl}
                     className="w-full h-full rounded-full object-cover object-center"
                     alt="Profile"
                   />
                 </div>
                 <div>
                   <div className="text-[9vw] sm:text-[7vw] md:text-[3.5vw] font-[900] flex items-center gap-3">
-                    <h3>{fetchedUser?.fullname}</h3>
+                    <h3>{viewingUser?.fullname}</h3>
                     <span
                       onMouseEnter={() => setHoverOverLevel(true)}
                       onMouseLeave={() => setHoverOverLevel(false)}
@@ -169,11 +174,11 @@ function ProfilePage({ formatTime }) {
                       onTouchEnd={() => setHoverOverLevel(false)}
                       className="opacity-70 text-[4.5vw] sm:text-[3vw] md:text-[2vw] cursor-pointer"
                     >
-                      (Level {fetchedUser?.level.current})
+                      (Level {viewingUser?.level.current})
                     </span>
                   </div>
                   <h4 className="text-black/60 text-[4vw] sm:text-[2.5vw] md:text-[1.25vw] -mt-1 sm:-mt-2 md:-mt-3 ml-1">
-                    @{fetchedUser?.username}
+                    @{viewingUser?.username}
                   </h4>
                 </div>
               </div>
@@ -193,8 +198,8 @@ function ProfilePage({ formatTime }) {
                       <div className="absolute scale-[3] rotate-180 bottom-full left-[80%] sm:left-1/2 -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-[#212529]" />
                       <div className="bg-[#212529] text-white w-[20rem] h-[8rem] p-5 rounded-md whitespace-nowrap">
                         <div className="flex items-center text-lg justify-between">
-                          <h4>Level {fetchedUser?.level.current}</h4>
-                          <h4>Level {fetchedUser?.level.current + 1}</h4>
+                          <h4>Level {viewingUser?.level.current}</h4>
+                          <h4>Level {viewingUser?.level.current + 1}</h4>
                         </div>
 
                         <div className="w-full mt-3 relative">
@@ -203,16 +208,16 @@ function ProfilePage({ formatTime }) {
                             className={`absolute border-[#e94545] border-4 rounded-full`} // Calculate the progress percentage
                             style={{
                               width: `${
-                                (fetchedUser.level.xpAtCurrentLevel /
-                                  fetchedUser.level.xpForNextLevel) *
+                                (viewingUser.level.xpAtCurrentLevel /
+                                  viewingUser.level.xpForNextLevel) *
                                 100
                               }%`,
                             }}
                           />
                           <h4 className="w-full text-center pt-5">{`${Math.floor(
-                            fetchedUser.level.xpAtCurrentLevel
+                            viewingUser.level.xpAtCurrentLevel
                           )} / ${Math.floor(
-                            fetchedUser.level.xpForNextLevel
+                            viewingUser.level.xpForNextLevel
                           )} XP`}</h4>
                         </div>
                       </div>
@@ -226,7 +231,7 @@ function ProfilePage({ formatTime }) {
                     Daily Time
                   </h3>
                   <h4 className="text-[3.5vw] sm:text-[2.5vw] md:text-[1vw]">
-                    {formatTime(Math.floor(fetchedUser.daily_time / 60000))}
+                    {formatTime(Math.floor(viewingUser.daily_time / 60000))}
                   </h4>
                 </div>
                 <div className="w-1/3 text-center md:text-left">
@@ -234,7 +239,7 @@ function ProfilePage({ formatTime }) {
                     Weekly Time
                   </h3>
                   <h4 className="text-[3.5vw] sm:text-[2.5vw] md:text-[1vw]">
-                    {formatTime(Math.floor(fetchedUser.weekly_time / 60000))}
+                    {formatTime(Math.floor(viewingUser.weekly_time / 60000))}
                   </h4>
                 </div>
                 <div className="w-1/3 text-center md:text-left">
@@ -242,7 +247,7 @@ function ProfilePage({ formatTime }) {
                     Total Time
                   </h3>
                   <h4 className="text-[3.5vw] sm:text-[2.5vw] md:text-[1vw]">
-                    {formatTime(Math.floor(fetchedUser.total_time / 60000))}
+                    {formatTime(Math.floor(viewingUser.total_time / 60000))}
                   </h4>
                 </div>
               </div>
@@ -309,7 +314,7 @@ function ProfilePage({ formatTime }) {
               <div className="w-full md:w-[50%]">
                 <StatsComponent
                   dailyData={dailyData}
-                  langDataArray={fetchedUser.language_time}
+                  langDataArray={viewingUser.language_time}
                   formatTime={formatTime}
                   formatLanguage={formatLanguage}
                 />
@@ -364,7 +369,7 @@ function ProfilePage({ formatTime }) {
                       {/* The longest coding session is calculated in the backend */}
                       {formatTime(
                         Math.floor(
-                          fetchedUser?.longest_coding_session / (60 * 1000)
+                          viewingUser?.longest_coding_session / (60 * 1000)
                         )
                       ) || 0}
                     </h4>
@@ -372,7 +377,7 @@ function ProfilePage({ formatTime }) {
                 </div>
                 <div className="w-full md:w-1/2 mt-10 mb-12">
                   <LanguageTimeDisplay
-                    langDataArray={fetchedUser.language_time}
+                    langDataArray={viewingUser.language_time}
                     formatTime={formatTime}
                     formatLanguage={formatLanguage}
                   />

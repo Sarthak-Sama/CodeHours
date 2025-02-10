@@ -37,7 +37,6 @@ export default function StatsComponent({
   const CustomTooltip = ({ active, payload, label }) => {
     if (active && payload && payload.length) {
       const { fullLabel, value } = payload[0].payload;
-      console.log(fullLabel, label);
       // For month or total views, display the complete date if available.
       const displayLabel =
         (selectedTimeSpan === "month" || selectedTimeSpan === "total") &&
