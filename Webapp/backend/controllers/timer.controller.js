@@ -28,10 +28,9 @@ function getXpForLevel(level) {
 }
 
 module.exports.logCodingTime = async (req, res) => {
-  // Destructure the new fields from the request body.
   const { token, language, startTime, endTime, instanceId } = req.body;
 
-  // Validate input
+  // Validate input.
   if (!token || !language || !startTime || !endTime) {
     return res.status(400).json({
       error:
@@ -43,9 +42,9 @@ module.exports.logCodingTime = async (req, res) => {
   const startTimestamp = new Date(startTime);
   const endTimestamp = new Date(endTime);
   if (isNaN(startTimestamp) || isNaN(endTimestamp)) {
-    return res.status(400).json({
-      error: "Invalid startTime or endTime format.",
-    });
+    return res
+      .status(400)
+      .json({ error: "Invalid startTime or endTime format." });
   }
   if (endTimestamp <= startTimestamp) {
     return res
@@ -53,47 +52,58 @@ module.exports.logCodingTime = async (req, res) => {
       .json({ error: "endTime must be greater than startTime." });
   }
 
+  // Start a Mongoose session to run a transaction.
+  const session = await UserTime.startSession();
+  session.startTransaction();
+
   try {
-    // Retrieve the user document by token.
-    let user = await UserTime.findOne({ token });
+    // Retrieve the user document within the session.
+    let user = await UserTime.findOne({ token }).session(session);
     if (!user) {
+      await session.abortTransaction();
+      session.endSession();
       return res.status(404).json({ error: "User session not found." });
     }
 
-    // Deduplication: determine the effective start time.
-    // If the new interval's start is earlier than user.last_updated,
-    // then only count from user.last_updated onward.
+    // Deduplication: Determine the effective start time.
+    // If the new log's start is earlier than user.last_updated, only count from user.last_updated onward.
     let effectiveStartTime = startTimestamp;
     if (user.last_updated && new Date(user.last_updated) > startTimestamp) {
       effectiveStartTime = new Date(user.last_updated);
     }
     const effectiveTimeSpent = endTimestamp - effectiveStartTime;
-
-    // If nothing new to add, simply return success.
     if (effectiveTimeSpent <= 0) {
+      await session.abortTransaction();
+      session.endSession();
       return res.status(200).json({ message: "No new time to log.", user });
     }
 
-    // Use the incoming endTimestamp as the current time for logging.
+    // Use the incoming endTimestamp as the current time.
     const currentTime = endTimestamp;
 
-    // Define a threshold for rolling 24 hours.
-    const twentyFourHoursAgo = new Date(
-      currentTime.getTime() - 24 * 60 * 60 * 1000
-    );
+    // --- Overlapping Interval Deduplication ---
+    // Two intervals overlap if: new.start < existing.end AND new.end > existing.start.
+    const overlappingLog = user.time_logs.find((log) => {
+      const logStart = new Date(log.startTime);
+      const logEnd = new Date(log.endTime);
+      return effectiveStartTime < logEnd && currentTime > logStart;
+    });
+    if (overlappingLog) {
+      await session.abortTransaction();
+      session.endSession();
+      return res
+        .status(200)
+        .json({ message: "Overlapping log already exists.", user });
+    }
 
-    // Define a threshold (in milliseconds) for a gap that ends a session.
-    // Since logs are sent every 2 minutes, a gap longer than 3 minutes indicates a new session.
+    // --- Session Handling ---
     const THRESHOLD_MS = 3 * 60 * 1000; // 3 minutes
-
-    // Determine session boundaries.
     let newSessionStart;
     let newLongestCodingSession = user.longest_coding_session || 0;
     if (
       !user.current_session_start ||
       currentTime - new Date(user.last_updated) > THRESHOLD_MS
     ) {
-      // If a session existed, calculate its duration.
       if (user.current_session_start && user.last_updated) {
         const endedSessionDuration =
           new Date(user.last_updated) - new Date(user.current_session_start);
@@ -102,10 +112,8 @@ module.exports.logCodingTime = async (req, res) => {
           endedSessionDuration
         );
       }
-      // Start a new session.
       newSessionStart = currentTime;
     } else {
-      // Session is continuing.
       newSessionStart = user.current_session_start;
       const sessionDuration =
         currentTime - new Date(user.current_session_start);
@@ -115,122 +123,85 @@ module.exports.logCodingTime = async (req, res) => {
       );
     }
 
-    // Prepare date keys for daily/weekly updates.
-    const today = getDailyKey();
-    const lastWeek = moment().utc().subtract(7, "days").startOf("day").toDate();
+    // --- Append the New Log Entry and Recalculate daily_time Using Logs ---
+    const newLogEntry = {
+      instanceId: instanceId,
+      startTime: effectiveStartTime,
+      endTime: currentTime,
+      duration: effectiveTimeSpent,
+      language: language,
+    };
 
-    // Atomic update for UserTime using an aggregation pipeline.
-    const updatedUser = await UserTime.findOneAndUpdate(
-      { token },
-      [
-        {
-          $set: {
-            total_time: { $add: ["$total_time", effectiveTimeSpent] },
-            daily_time: {
-              $cond: {
-                if: { $lt: ["$last_updated", twentyFourHoursAgo] },
-                then: effectiveTimeSpent,
-                else: { $add: ["$daily_time", effectiveTimeSpent] },
-              },
-            },
-            weekly_time: {
-              $cond: {
-                if: { $lt: ["$last_updated", lastWeek] },
-                then: effectiveTimeSpent,
-                else: { $add: ["$weekly_time", effectiveTimeSpent] },
-              },
-            },
-            last_updated: currentTime,
-            language_time: {
-              $cond: {
-                if: { $not: { $in: [language, "$language_time.language"] } },
-                then: {
-                  $concatArrays: [
-                    "$language_time",
-                    [
-                      {
-                        language,
-                        daily_time: effectiveTimeSpent,
-                        weekly_time: effectiveTimeSpent,
-                        total_time: effectiveTimeSpent,
-                        last_updated: currentTime,
-                      },
-                    ],
-                  ],
-                },
-                else: {
-                  $map: {
-                    input: "$language_time",
-                    as: "lang",
-                    in: {
-                      $cond: {
-                        if: { $eq: ["$$lang.language", language] },
-                        then: {
-                          language: "$$lang.language",
-                          daily_time: {
-                            $cond: {
-                              if: {
-                                $lt: [
-                                  "$$lang.last_updated",
-                                  twentyFourHoursAgo,
-                                ],
-                              },
-                              then: effectiveTimeSpent,
-                              else: {
-                                $add: ["$$lang.daily_time", effectiveTimeSpent],
-                              },
-                            },
-                          },
-                          weekly_time: {
-                            $cond: {
-                              if: { $lt: ["$$lang.last_updated", lastWeek] },
-                              then: effectiveTimeSpent,
-                              else: {
-                                $add: [
-                                  "$$lang.weekly_time",
-                                  effectiveTimeSpent,
-                                ],
-                              },
-                            },
-                          },
-                          total_time: {
-                            $add: ["$$lang.total_time", effectiveTimeSpent],
-                          },
-                          last_updated: currentTime,
-                        },
-                        else: "$$lang",
-                      },
-                    },
-                  },
-                },
-              },
-            },
-            // Update session fields.
-            current_session_start: newSessionStart,
-            longest_coding_session: newLongestCodingSession,
-          },
-        },
-      ],
-      { new: true }
+    // Append the new log.
+    user.time_logs.push(newLogEntry);
+
+    // Remove log entries older than 24 hours.
+    const cutoff = new Date(currentTime.getTime() - 24 * 60 * 60 * 1000);
+    user.time_logs = user.time_logs.filter(
+      (log) => new Date(log.endTime) >= cutoff
     );
 
-    if (!updatedUser) {
-      return res.status(404).json({ error: "User session not found." });
+    // Recalculate overall daily_time as the sum of durations from the logs in the last 24 hours.
+    const recalculatedDailyTime = user.time_logs.reduce(
+      (sum, log) => sum + log.duration,
+      0
+    );
+    user.daily_time = recalculatedDailyTime;
+
+    // Update the cumulative total time.
+    user.total_time += effectiveTimeSpent;
+
+    // --- Update Language-Specific Aggregates ---
+    let langRecord = user.language_time.find(
+      (item) => item.language === language
+    );
+    const languageLogs = user.time_logs.filter(
+      (log) => log.language === language
+    );
+    const languageDailyTime = languageLogs.reduce(
+      (sum, log) => sum + log.duration,
+      0
+    );
+
+    if (langRecord) {
+      langRecord.total_time += effectiveTimeSpent;
+      langRecord.daily_time = languageDailyTime;
+      // weekly_time can be updated elsewhere (e.g., from DailyTime docs)
+      langRecord.weekly_time += effectiveTimeSpent;
+      langRecord.last_updated = currentTime;
+    } else {
+      user.language_time.push({
+        language: language,
+        total_time: effectiveTimeSpent,
+        daily_time: effectiveTimeSpent,
+        weekly_time: effectiveTimeSpent,
+        last_updated: currentTime,
+      });
     }
 
-    // Update DailyTime with an atomic operation.
+    // --- Update Session Fields and Last Updated ---
+    user.current_session_start = newSessionStart;
+    user.longest_coding_session = newLongestCodingSession;
+    user.last_updated = currentTime;
+
+    // Save the updated user document within the transaction.
+    await user.save({ session });
+
+    // --- Update DailyTime Document ---
+    // This document (keyed by userId and today's midnight) is used later for weekly time calculations.
+    const today = getDailyKey(); // e.g., a function that returns today's date at midnight.
     await DailyTime.findOneAndUpdate(
-      { userId: updatedUser.userId, date: today },
+      { userId: user.userId, date: today },
       {
         $inc: { totalTime: effectiveTimeSpent },
-        $setOnInsert: { userId: updatedUser.userId, date: today },
+        $setOnInsert: { userId: user.userId, date: today },
       },
-      { upsert: true }
+      { upsert: true, session }
     );
 
-    // Updating User Level.
-    // Here we assume total_time is in milliseconds, so we convert to minutes.
-    const currentXP = updatedUser.total_time / (60 * 1000);
+    // --- Update User Level ---
+    // Assume total_time is in milliseconds; convert to minutes for XP calculations.
+    const currentXP = user.total_time / (60 * 1000);
     const newLevel = calculateLevel(currentXP);
     const currentLevelThreshold = getXpForLevel(newLevel);
     const nextLevelThreshold = getXpForLevel(newLevel + 1);
@@ -245,14 +216,21 @@ module.exports.logCodingTime = async (req, res) => {
           "level.xpForNextLevel": xpRequiredForNextLevel,
         },
         $max: { "level.current": newLevel },
-      }
+      },
+      { session }
     );
+
+    // Commit the transaction.
+    await session.commitTransaction();
+    session.endSession();
 
     return res.status(200).json({
       message: "Time logged successfully",
-      user: updatedUser,
+      user,
     });
   } catch (error) {
+    await session.abortTransaction();
+    session.endSession();
     return handleError(res, error, "log coding time");
   }
 };
@@ -340,52 +318,6 @@ const getYearlyStats = async (userId) => {
   return { time: result.length ? result[0].total : 0 };
 };
 
-// Old fetchUser function, Now we are handling user creation with the clerk webhook
-// module.exports.fetchUser = async (req, res) => {
-//   const { userId, pfpUrl, username, fullname } = req.body;
-
-//   if (!userId) {
-//     return res.status(400).json({ error: "User Id not provided" });
-//   }
-
-//   try {
-//     const existingUser = await UserTime.findOne({ userId });
-
-//     if (!existingUser) {
-//       if (!pfpUrl || !username) {
-//         return res
-//           .status(400)
-//           .json({ error: "PfpUrl, Username or Fullname not provided" });
-//       }
-//       const sessionKey = crypto.randomBytes(16).toString("hex");
-//       const newUser = await UserTime.create({
-//         token: sessionKey,
-//         userId,
-//         username,
-//         fullname,
-//         pfpUrl,
-//         total_time: 0,
-//         daily_time: 0,
-//         weekly_time: 0,
-//         language_time: [],
-//         last_updated: new Date(),
-//       });
-
-//       return res.status(200).json({
-//         message: "New user created.",
-//         user: newUser,
-//       });
-//     }
-
-//     return res.status(200).json({
-//       message: "User already exists",
-//       user: existingUser,
-//     });
-//   } catch (error) {
-//     return handleError(res, error, "create session");
-//   }
-// };
-
 module.exports.fetchUser = async (req, res) => {
   const { userId } = req.body;
 
@@ -394,11 +326,35 @@ module.exports.fetchUser = async (req, res) => {
   }
 
   try {
+    // Fetch the user document
     const user = await UserTime.findOne({ userId });
-
     if (!user) {
       return res.status(404).json({ error: "User not found" });
     }
+
+    // Calculate the start of today (midnight)
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+
+    // Determine the date 6 days before today so that we cover 7 days (today plus the previous 6 days)
+    const sevenDaysAgo = new Date(
+      startOfToday.getTime() - 6 * 24 * 60 * 60 * 1000
+    );
+
+    // Fetch DailyTime documents for this user from the past 7 days
+    const dailyTimes = await DailyTime.find({
+      userId,
+      date: { $gte: sevenDaysAgo },
+    });
+
+    // Sum the totalTime from the fetched DailyTime documents to calculate weekly_time
+    let weekly_time = 0;
+    dailyTimes.forEach((doc) => {
+      weekly_time += doc.totalTime;
+    });
+
+    // Optionally update the user document's weekly_time field (if you want to reflect it here)
+    user.weekly_time = weekly_time;
 
     return res.status(200).json({
       message: "User fetched successfully",

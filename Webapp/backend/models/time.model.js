@@ -1,5 +1,14 @@
 const mongoose = require("mongoose");
 
+// Update LogEntrySchema to include instanceId for deduplication.
+const LogEntrySchema = new mongoose.Schema({
+  instanceId: { type: String, required: true },
+  startTime: { type: Date, required: true },
+  endTime: { type: Date, required: true },
+  duration: { type: Number, required: true }, // Duration in milliseconds
+  language: { type: String },
+});
+
 const LanguageTimeSchema = new mongoose.Schema({
   language: { type: String, required: true },
   daily_time: { type: Number, default: 0 },
@@ -26,6 +35,7 @@ const UserTimeSchema = new mongoose.Schema({
   language_time: [LanguageTimeSchema], // Aggregated language-specific times
   current_session_start: { type: Date, default: Date.now },
   longest_coding_session: { type: Number, default: 0 },
+  time_logs: [LogEntrySchema],
   last_updated: { type: Date, default: Date.now },
 });
 
