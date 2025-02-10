@@ -4,7 +4,8 @@ const moment = require("moment");
 const DailyTime = require("../models/dailyTime.model");
 
 // Helper functions
-const getDailyKey = () => moment().utc().startOf("day").toDate();
+// const getDailyKey = () => moment().utc().startOf("day").toDate();
+
 const handleError = (res, error, context) => {
   console.error(`${context} Error:`, error);
   return res.status(500).json({
@@ -100,54 +101,38 @@ module.exports.logCodingTime = async (req, res) => {
       duration: effectiveTimeSpent,
     };
 
+    user.log_entries.push(logEntry);
+
+    // Prune log entries older than 24 hours
     const twentyFourHoursAgo = new Date(
       currentTime.getTime() - 24 * 60 * 60 * 1000
     );
-
-    // Atomic update for UserTime
-    const updatedUser = await UserTime.findOneAndUpdate(
-      { token },
-      {
-        $push: { log_entries: logEntry },
-        $pull: { log_entries: { endTime: { $lte: twentyFourHoursAgo } } },
-        $inc: { total_time: effectiveTimeSpent },
-        $set: {
-          daily_time: {
-            $sum: {
-              $map: {
-                input: {
-                  $filter: {
-                    input: "$log_entries",
-                    as: "entry",
-                    cond: { $gt: ["$$entry.endTime", twentyFourHoursAgo] },
-                  },
-                },
-                as: "entry",
-                in: "$$entry.duration",
-              },
-            },
-          },
-          last_updated: currentTime,
-          current_session_start: newSessionStart,
-          longest_coding_session: newLongestCodingSession,
-        },
-      },
-      { new: true }
+    user.log_entries = user.log_entries.filter(
+      (entry) => entry.endTime > twentyFourHoursAgo
     );
 
-    if (!updatedUser) {
-      return res.status(404).json({ error: "User session not found." });
-    }
+    const dailyTime = user.log_entries.reduce(
+      (total, entry) => total + entry.duration,
+      0
+    );
+
+    user.total_time += effectiveTimeSpent;
+    user.daily_time = dailyTime;
+    user.last_updated = currentTime;
+    user.current_session_start = newSessionStart;
+    user.longest_coding_session = newLongestCodingSession;
+
+    await user.save();
 
     // Update DailyTime document
     const today = moment().utc().startOf("day").toDate();
     await DailyTime.findOneAndUpdate(
-      { userId: updatedUser.userId, date: today },
+      { userId: user.userId, date: today },
       { $inc: { totalTime: effectiveTimeSpent } },
       { upsert: true }
     );
 
-    const currentXP = updatedUser.total_time / (60 * 1000);
+    const currentXP = user.total_time / (60 * 1000);
     const newLevel = calculateLevel(currentXP);
     const currentLevelThreshold = getXpForLevel(newLevel);
     const nextLevelThreshold = getXpForLevel(newLevel + 1);
@@ -167,7 +152,7 @@ module.exports.logCodingTime = async (req, res) => {
 
     return res.status(200).json({
       message: "Time logged successfully",
-      user: updatedUser,
+      user,
     });
   } catch (error) {
     return handleError(res, error, "log coding time");
@@ -195,7 +180,7 @@ module.exports.updateAboutSection = async (req, res) => {
       aboutSection: updatedUser.about,
     });
   } catch (error) {
-    handleError(error);
+    return handleError(res, error, "update about section");
   }
 };
 
@@ -338,82 +323,51 @@ module.exports.getActivityData = async (req, res) => {
   }
 };
 
-module.exports.clerkUpdate = async (req, res) => {
-  try {
-    // Verify webhook signature (for security)
-    const signature = req.headers["clerk-signature"];
-    const rawBody = JSON.stringify(req.body);
-    const expectedSignature = crypto
-      .createHmac("sha256", process.env.CLERK_WEBHOOK_SECRET)
-      .update(rawBody)
-      .digest("hex");
+// This function in not used in the current implementation
+// module.exports.getCodingTime = async (req, res) => {
+//   try {
+//     // Extract the required user parameter and optional timespan from the query string.
+//     const username = req.query.user;
+//     if (!username) {
+//       return res.status(400).json({ error: "User parameter is required." });
+//     }
 
-    if (signature !== expectedSignature) {
-      return res.status(401).json({ message: "Invalid signature" });
-    }
+//     // Find the user's coding time data in the database.
+//     const userTime = await UserTime.findOne({ username: username });
+//     if (!userTime) {
+//       return res.status(404).json({ error: "User not found." });
+//     }
 
-    const { type, data } = req.body;
+//     // Determine which time value to return:
+//     // If a timespan is specified (daily or weekly), return that; otherwise, use total_time.
+//     let totalTime;
+//     const timespan = req.query.timespan;
+//     if (timespan === "daily") {
+//       totalTime = userTime.daily_time;
+//     } else if (timespan === "weekly") {
+//       totalTime = userTime.weekly_time;
+//     } else {
+//       totalTime = userTime.total_time;
+//     }
 
-    if (type === "user.updated") {
-      const { id, image_url } = data;
+//     // Determine if the user is actively coding.
+//     // For this example, we assume that if the time elapsed since the last update is less than 150 seconds, the user is coding.
+//     const now = new Date();
+//     const lastUpdated = userTime.last_updated;
+//     const diffSeconds = (now - lastUpdated) / 1000;
+//     const isCoding = diffSeconds <= 120; // adjust threshold as needed
 
-      // Update the user's profile picture in your database
-      await UserTime.updateOne({ userId: id }, { $set: { pfpUrl: image_url } });
-
-      console.log(`Updated profile picture for user ${id}`);
-    }
-
-    res.status(200).json({ message: "Webhook received successfully" });
-  } catch (error) {
-    console.error("Error handling webhook:", error);
-    res.status(500).json({ message: "Internal server error" });
-  }
-};
-
-module.exports.getCodingTime = async (req, res) => {
-  try {
-    // Extract the required user parameter and optional timespan from the query string.
-    const username = req.query.user;
-    if (!username) {
-      return res.status(400).json({ error: "User parameter is required." });
-    }
-
-    // Find the user's coding time data in the database.
-    const userTime = await UserTime.findOne({ username: username });
-    if (!userTime) {
-      return res.status(404).json({ error: "User not found." });
-    }
-
-    // Determine which time value to return:
-    // If a timespan is specified (daily or weekly), return that; otherwise, use total_time.
-    let totalTime;
-    const timespan = req.query.timespan;
-    if (timespan === "daily") {
-      totalTime = userTime.daily_time;
-    } else if (timespan === "weekly") {
-      totalTime = userTime.weekly_time;
-    } else {
-      totalTime = userTime.total_time;
-    }
-
-    // Determine if the user is actively coding.
-    // For this example, we assume that if the time elapsed since the last update is less than 150 seconds, the user is coding.
-    const now = new Date();
-    const lastUpdated = userTime.last_updated;
-    const diffSeconds = (now - lastUpdated) / 1000;
-    const isCoding = diffSeconds <= 120; // adjust threshold as needed
-
-    // Respond with data formatted for the widget.
-    res.json({
-      totalTime: totalTime,
-      isCoding: isCoding,
-      lastUpdated: lastUpdated.toISOString(),
-    });
-  } catch (error) {
-    console.error("Error in getCodingTime:", error);
-    res.status(500).json({ error: "Server error." });
-  }
-};
+//     // Respond with data formatted for the widget.
+//     res.json({
+//       totalTime: totalTime,
+//       isCoding: isCoding,
+//       lastUpdated: lastUpdated.toISOString(),
+//     });
+//   } catch (error) {
+//     console.error("Error in getCodingTime:", error);
+//     res.status(500).json({ error: "Server error." });
+//   }
+// };
 
 module.exports.getDailyTime = async (req, res) => {
   const { token } = req.query;
