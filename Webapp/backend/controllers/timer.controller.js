@@ -39,7 +39,7 @@ module.exports.logCodingTime = async (req, res) => {
 
   const startTimestamp = new Date(startTime);
   const endTimestamp = new Date(endTime);
-  if (isNaN(startTimestamp) || isNaN(endTimestamp)) {
+  if (isNaN(startTimestamp.getTime()) || isNaN(endTimestamp.getTime())) {
     return res.status(400).json({
       error: "Invalid startTime or endTime format.",
     });
@@ -56,7 +56,7 @@ module.exports.logCodingTime = async (req, res) => {
       return res.status(404).json({ error: "User session not found." });
     }
 
-    // Check for duplicate instanceId
+    // Check for duplicate instanceId in log_entries
     const existingLog = user.log_entries.find(
       (entry) => entry.instanceId === instanceId
     );
@@ -103,46 +103,44 @@ module.exports.logCodingTime = async (req, res) => {
     }
 
     const logEntry = {
+      instanceId,
       startTime: effectiveStartTime,
       endTime: endTimestamp,
       duration: effectiveTimeSpent,
       language,
-      instanceId,
     };
 
-    user.log_entries.push(logEntry);
-
-    // Prune log entries older than 24 hours
     const twentyFourHoursAgo = new Date(
       currentTime.getTime() - 24 * 60 * 60 * 1000
     );
-    user.log_entries = user.log_entries.filter(
-      (entry) => entry.endTime > twentyFourHoursAgo
+
+    // Perform an atomic update on the UserTime document.
+    await UserTime.updateOne(
+      { token },
+      {
+        $push: { log_entries: logEntry },
+        $pull: { log_entries: { endTime: { $lte: twentyFourHoursAgo } } },
+        $inc: {
+          total_time: effectiveTimeSpent,
+          daily_time: effectiveTimeSpent,
+          // Use dot-notation to increment language-specific time fields.
+          [`language_time.${language}.total_time`]: effectiveTimeSpent,
+          [`language_time.${language}.daily_time`]: effectiveTimeSpent,
+        },
+        $set: {
+          last_updated: currentTime,
+          current_session_start: newSessionStart,
+          longest_coding_session: newLongestCodingSession,
+          // Update the last_updated for the language entry.
+          [`language_time.${language}.last_updated`]: currentTime,
+        },
+        $max: {
+          "level.current": calculateLevel(user.total_time / (60 * 1000)),
+        },
+      }
     );
 
-    const dailyTime = user.log_entries.reduce(
-      (total, entry) => total + entry.duration,
-      0
-    );
-
-    user.total_time += effectiveTimeSpent;
-    user.daily_time = dailyTime;
-    user.last_updated = currentTime;
-    user.current_session_start = newSessionStart;
-    user.longest_coding_session = newLongestCodingSession;
-
-    // Update language time
-    if (!user.language_time) {
-      user.language_time = {};
-    }
-    if (!user.language_time[language]) {
-      user.language_time[language] = 0;
-    }
-    user.language_time[language] += effectiveTimeSpent;
-
-    await user.save();
-
-    // Update DailyTime document
+    // Update the DailyTime document.
     const today = moment().utc().startOf("day").toDate();
     await DailyTime.findOneAndUpdate(
       { userId: user.userId, date: today },
@@ -164,7 +162,6 @@ module.exports.logCodingTime = async (req, res) => {
           "level.xpAtCurrentLevel": xpIntoCurrentLevel,
           "level.xpForNextLevel": xpRequiredForNextLevel,
         },
-        $max: { "level.current": newLevel },
       }
     );
 
