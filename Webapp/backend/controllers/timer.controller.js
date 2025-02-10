@@ -1,5 +1,4 @@
 const UserTime = require("../models/time.model");
-const crypto = require("crypto");
 const moment = require("moment");
 const DailyTime = require("../models/dailyTime.model");
 
@@ -31,10 +30,10 @@ function getXpForLevel(level) {
 module.exports.logCodingTime = async (req, res) => {
   const { token, language, startTime, endTime, instanceId } = req.body;
 
-  if (!token || !language || !startTime || !endTime) {
+  if (!token || !language || !startTime || !endTime || !instanceId) {
     return res.status(400).json({
       error:
-        "Invalid request. Token, language, startTime, and endTime are required.",
+        "Invalid request. Token, language, startTime, endTime, and instanceId are required.",
     });
   }
 
@@ -55,6 +54,14 @@ module.exports.logCodingTime = async (req, res) => {
     let user = await UserTime.findOne({ token });
     if (!user) {
       return res.status(404).json({ error: "User session not found." });
+    }
+
+    // Check for duplicate instanceId
+    const existingLog = user.log_entries.find(
+      (entry) => entry.instanceId === instanceId
+    );
+    if (existingLog) {
+      return res.status(200).json({ message: "Duplicate log entry ignored." });
     }
 
     let effectiveStartTime = startTimestamp;
@@ -99,6 +106,8 @@ module.exports.logCodingTime = async (req, res) => {
       startTime: effectiveStartTime,
       endTime: endTimestamp,
       duration: effectiveTimeSpent,
+      language,
+      instanceId,
     };
 
     user.log_entries.push(logEntry);
@@ -121,6 +130,15 @@ module.exports.logCodingTime = async (req, res) => {
     user.last_updated = currentTime;
     user.current_session_start = newSessionStart;
     user.longest_coding_session = newLongestCodingSession;
+
+    // Update language time
+    if (!user.language_time) {
+      user.language_time = {};
+    }
+    if (!user.language_time[language]) {
+      user.language_time[language] = 0;
+    }
+    user.language_time[language] += effectiveTimeSpent;
 
     await user.save();
 

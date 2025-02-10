@@ -55,7 +55,6 @@ function ProfilePage({ formatTime }) {
     if (id) {
       fetchUserData(id);
     } else {
-      fetchUserData();
       setViewingUser(fetchedUser);
     }
   }, [id, fetchedUser]);
@@ -146,6 +145,7 @@ function ProfilePage({ formatTime }) {
   // Calculate the longest daily streak.
   // Ensure that the dailyData objects have properties: date and codingTime (in minutes).
   const longestDailyStreak = calculateLongestStreak(dailyData);
+  console.log(viewingUser);
   return (
     <div className="w-full h-full">
       {viewingUser ? (

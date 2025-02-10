@@ -77,6 +77,7 @@ function Context({ children }) {
   const fetchUserData = async (otherUserId) => {
     try {
       if (!otherUserId) {
+        if (!user) return;
         const response = await axios.post("/api/fetchUser", {
           userId: user.id,
         });
