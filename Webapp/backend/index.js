@@ -37,7 +37,7 @@ connectDB();
 app.get("/api/stats", timerController.getUserTimeStats);
 app.get("/api/leaderboard", timerController.getLeaderboard);
 app.get("/api/activityData", timerController.getActivityData);
-app.get("/api/codingTime", timerController.getCodingTime);
+// app.get("/api/codingTime", timerController.getCodingTime); // Not used in current implementation
 app.get("/api/getDailyTime", timerController.getDailyTime);
 
 // POST Routes
