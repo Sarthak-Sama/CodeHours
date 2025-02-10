@@ -3,9 +3,14 @@ const mongoose = require("mongoose");
 const LanguageTimeSchema = new mongoose.Schema({
   language: { type: String, required: true },
   daily_time: { type: Number, default: 0 },
-  weekly_time: { type: Number, default: 0 },
   total_time: { type: Number, default: 0 },
   last_updated: { type: Date, default: Date.now },
+});
+
+const LogEntrySchema = new mongoose.Schema({
+  startTime: { type: Date, required: true },
+  endTime: { type: Date, required: true },
+  duration: { type: Number, required: true }, // Duration in milliseconds
 });
 
 const UserTimeSchema = new mongoose.Schema({
@@ -22,10 +27,10 @@ const UserTimeSchema = new mongoose.Schema({
   },
   total_time: { type: Number, default: 0 }, // Cumulative total time
   daily_time: { type: Number, default: 0 }, // Time spent in the last 24 hours
-  weekly_time: { type: Number, default: 0 }, // Time spent in the last 7 days
   language_time: [LanguageTimeSchema], // Aggregated language-specific times
   current_session_start: { type: Date, default: Date.now },
   longest_coding_session: { type: Number, default: 0 },
+  log_entries: [LogEntrySchema],
   last_updated: { type: Date, default: Date.now },
 });
 

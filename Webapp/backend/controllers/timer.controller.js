@@ -28,10 +28,8 @@ function getXpForLevel(level) {
 }
 
 module.exports.logCodingTime = async (req, res) => {
-  // Destructure the new fields from the request body.
   const { token, language, startTime, endTime, instanceId } = req.body;
 
-  // Validate input
   if (!token || !language || !startTime || !endTime) {
     return res.status(400).json({
       error:
@@ -39,7 +37,6 @@ module.exports.logCodingTime = async (req, res) => {
     });
   }
 
-  // Convert incoming timestamps to Date objects.
   const startTimestamp = new Date(startTime);
   const endTimestamp = new Date(endTime);
   if (isNaN(startTimestamp) || isNaN(endTimestamp)) {
@@ -54,46 +51,30 @@ module.exports.logCodingTime = async (req, res) => {
   }
 
   try {
-    // Retrieve the user document by token.
     let user = await UserTime.findOne({ token });
     if (!user) {
       return res.status(404).json({ error: "User session not found." });
     }
 
-    // Deduplication: determine the effective start time.
-    // If the new interval's start is earlier than user.last_updated,
-    // then only count from user.last_updated onward.
     let effectiveStartTime = startTimestamp;
     if (user.last_updated && new Date(user.last_updated) > startTimestamp) {
       effectiveStartTime = new Date(user.last_updated);
     }
     const effectiveTimeSpent = endTimestamp - effectiveStartTime;
 
-    // If nothing new to add, simply return success.
     if (effectiveTimeSpent <= 0) {
       return res.status(200).json({ message: "No new time to log.", user });
     }
 
-    // Use the incoming endTimestamp as the current time for logging.
     const currentTime = endTimestamp;
+    const THRESHOLD_MS = 3 * 60 * 1000;
 
-    // Define a threshold for rolling 24 hours.
-    const twentyFourHoursAgo = new Date(
-      currentTime.getTime() - 24 * 60 * 60 * 1000
-    );
-
-    // Define a threshold (in milliseconds) for a gap that ends a session.
-    // Since logs are sent every 2 minutes, a gap longer than 3 minutes indicates a new session.
-    const THRESHOLD_MS = 3 * 60 * 1000; // 3 minutes
-
-    // Determine session boundaries.
     let newSessionStart;
     let newLongestCodingSession = user.longest_coding_session || 0;
     if (
       !user.current_session_start ||
       currentTime - new Date(user.last_updated) > THRESHOLD_MS
     ) {
-      // If a session existed, calculate its duration.
       if (user.current_session_start && user.last_updated) {
         const endedSessionDuration =
           new Date(user.last_updated) - new Date(user.current_session_start);
@@ -102,10 +83,8 @@ module.exports.logCodingTime = async (req, res) => {
           endedSessionDuration
         );
       }
-      // Start a new session.
       newSessionStart = currentTime;
     } else {
-      // Session is continuing.
       newSessionStart = user.current_session_start;
       const sessionDuration =
         currentTime - new Date(user.current_session_start);
@@ -115,102 +94,44 @@ module.exports.logCodingTime = async (req, res) => {
       );
     }
 
-    // Prepare date keys for daily/weekly updates.
-    const today = getDailyKey();
-    const lastWeek = moment().utc().subtract(7, "days").startOf("day").toDate();
+    const logEntry = {
+      startTime: effectiveStartTime,
+      endTime: endTimestamp,
+      duration: effectiveTimeSpent,
+    };
 
-    // Atomic update for UserTime using an aggregation pipeline.
+    const twentyFourHoursAgo = new Date(
+      currentTime.getTime() - 24 * 60 * 60 * 1000
+    );
+
+    // Atomic update for UserTime
     const updatedUser = await UserTime.findOneAndUpdate(
       { token },
-      [
-        {
-          $set: {
-            total_time: { $add: ["$total_time", effectiveTimeSpent] },
-            daily_time: {
-              $cond: {
-                if: { $lt: ["$last_updated", twentyFourHoursAgo] },
-                then: effectiveTimeSpent,
-                else: { $add: ["$daily_time", effectiveTimeSpent] },
-              },
-            },
-            weekly_time: {
-              $cond: {
-                if: { $lt: ["$last_updated", lastWeek] },
-                then: effectiveTimeSpent,
-                else: { $add: ["$weekly_time", effectiveTimeSpent] },
-              },
-            },
-            last_updated: currentTime,
-            language_time: {
-              $cond: {
-                if: { $not: { $in: [language, "$language_time.language"] } },
-                then: {
-                  $concatArrays: [
-                    "$language_time",
-                    [
-                      {
-                        language,
-                        daily_time: effectiveTimeSpent,
-                        weekly_time: effectiveTimeSpent,
-                        total_time: effectiveTimeSpent,
-                        last_updated: currentTime,
-                      },
-                    ],
-                  ],
-                },
-                else: {
-                  $map: {
-                    input: "$language_time",
-                    as: "lang",
-                    in: {
-                      $cond: {
-                        if: { $eq: ["$$lang.language", language] },
-                        then: {
-                          language: "$$lang.language",
-                          daily_time: {
-                            $cond: {
-                              if: {
-                                $lt: [
-                                  "$$lang.last_updated",
-                                  twentyFourHoursAgo,
-                                ],
-                              },
-                              then: effectiveTimeSpent,
-                              else: {
-                                $add: ["$$lang.daily_time", effectiveTimeSpent],
-                              },
-                            },
-                          },
-                          weekly_time: {
-                            $cond: {
-                              if: { $lt: ["$$lang.last_updated", lastWeek] },
-                              then: effectiveTimeSpent,
-                              else: {
-                                $add: [
-                                  "$$lang.weekly_time",
-                                  effectiveTimeSpent,
-                                ],
-                              },
-                            },
-                          },
-                          total_time: {
-                            $add: ["$$lang.total_time", effectiveTimeSpent],
-                          },
-                          last_updated: currentTime,
-                        },
-                        else: "$$lang",
-                      },
-                    },
+      {
+        $push: { log_entries: logEntry },
+        $pull: { log_entries: { endTime: { $lte: twentyFourHoursAgo } } },
+        $inc: { total_time: effectiveTimeSpent },
+        $set: {
+          daily_time: {
+            $sum: {
+              $map: {
+                input: {
+                  $filter: {
+                    input: "$log_entries",
+                    as: "entry",
+                    cond: { $gt: ["$$entry.endTime", twentyFourHoursAgo] },
                   },
                 },
+                as: "entry",
+                in: "$$entry.duration",
               },
             },
-            // Update session fields.
-            current_session_start: newSessionStart,
-            longest_coding_session: newLongestCodingSession,
           },
+          last_updated: currentTime,
+          current_session_start: newSessionStart,
+          longest_coding_session: newLongestCodingSession,
         },
-      ],
+      },
       { new: true }
     );
 
@@ -218,18 +139,14 @@ module.exports.logCodingTime = async (req, res) => {
       return res.status(404).json({ error: "User session not found." });
     }
 
-    // Update DailyTime with an atomic operation.
+    // Update DailyTime document
+    const today = moment().utc().startOf("day").toDate();
     await DailyTime.findOneAndUpdate(
       { userId: updatedUser.userId, date: today },
-      {
-        $inc: { totalTime: effectiveTimeSpent },
-        $setOnInsert: { userId: updatedUser.userId, date: today },
-      },
+      { $inc: { totalTime: effectiveTimeSpent } },
       { upsert: true }
     );
 
-    // Updating User Level.
-    // Here we assume total_time is in milliseconds, so we convert to minutes.
     const currentXP = updatedUser.total_time / (60 * 1000);
     const newLevel = calculateLevel(currentXP);
     const currentLevelThreshold = getXpForLevel(newLevel);
@@ -284,11 +201,10 @@ module.exports.updateAboutSection = async (req, res) => {
 
 module.exports.getUserTimeStats = async (req, res) => {
   const { token, period } = req.query;
-  const validPeriods = ["daily", "weekly", "monthly", "yearly", "total"];
 
-  if (!token || !period || !validPeriods.includes(period)) {
+  if (!token || !period) {
     return res.status(400).json({
-      error: `Valid token and period (${validPeriods.join(", ")}) are required`,
+      error: "Valid token and period are required",
     });
   }
 
@@ -296,13 +212,31 @@ module.exports.getUserTimeStats = async (req, res) => {
     const user = await UserTime.findOne({ token });
     if (!user) return res.status(404).json({ error: "User not found" });
 
+    const now = new Date();
+    const twentyFourHoursAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+    const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+
+    const dailyTime = user.log_entries
+      .filter((entry) => entry.endTime > twentyFourHoursAgo)
+      .reduce((total, entry) => total + entry.duration, 0);
+
+    const weeklyTimeDocs = await DailyTime.find({
+      userId: user.userId,
+      date: { $gte: sevenDaysAgo },
+    });
+
+    const weeklyTime = weeklyTimeDocs.reduce(
+      (total, doc) => total + doc.totalTime,
+      0
+    );
+
     let stats = {};
     switch (period) {
       case "daily":
-        stats = { time: user.daily_time };
+        stats = { time: dailyTime };
         break;
       case "weekly":
-        stats = { time: user.weekly_time };
+        stats = { time: weeklyTime };
         break;
       case "monthly":
         stats = await getMonthlyStats(user.userId);
@@ -339,52 +273,6 @@ const getYearlyStats = async (userId) => {
   ]);
   return { time: result.length ? result[0].total : 0 };
 };
-
-// Old fetchUser function, Now we are handling user creation with the clerk webhook
-// module.exports.fetchUser = async (req, res) => {
-//   const { userId, pfpUrl, username, fullname } = req.body;
-
-//   if (!userId) {
-//     return res.status(400).json({ error: "User Id not provided" });
-//   }
-
-//   try {
-//     const existingUser = await UserTime.findOne({ userId });
-
-//     if (!existingUser) {
-//       if (!pfpUrl || !username) {
-//         return res
-//           .status(400)
-//           .json({ error: "PfpUrl, Username or Fullname not provided" });
-//       }
-//       const sessionKey = crypto.randomBytes(16).toString("hex");
-//       const newUser = await UserTime.create({
-//         token: sessionKey,
-//         userId,
-//         username,
-//         fullname,
-//         pfpUrl,
-//         total_time: 0,
-//         daily_time: 0,
-//         weekly_time: 0,
-//         language_time: [],
-//         last_updated: new Date(),
-//       });
-
-//       return res.status(200).json({
-//         message: "New user created.",
-//         user: newUser,
-//       });
-//     }
-
-//     return res.status(200).json({
-//       message: "User already exists",
-//       user: existingUser,
-//     });
-//   } catch (error) {
-//     return handleError(res, error, "create session");
-//   }
-// };
 
 module.exports.fetchUser = async (req, res) => {
   const { userId } = req.body;
