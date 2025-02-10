@@ -114,55 +114,87 @@ module.exports.logCodingTime = async (req, res) => {
       currentTime.getTime() - 24 * 60 * 60 * 1000
     );
 
-    // Perform an atomic update on the UserTime document.
-    await UserTime.updateOne(
-      { token },
-      {
-        $push: { log_entries: logEntry },
-        $pull: { log_entries: { endTime: { $lte: twentyFourHoursAgo } } },
-        $inc: {
-          total_time: effectiveTimeSpent,
-          daily_time: effectiveTimeSpent,
-          // Use dot-notation to increment language-specific time fields.
-          [`language_time.${language}.total_time`]: effectiveTimeSpent,
-          [`language_time.${language}.daily_time`]: effectiveTimeSpent,
+    // Start a session for transaction
+    const session = await mongoose.startSession();
+    session.startTransaction();
+    try {
+      // First, update the log_entries array: pull out old entries...
+      await UserTime.updateOne(
+        { token },
+        {
+          $pull: { log_entries: { endTime: { $lte: twentyFourHoursAgo } } },
         },
-        $set: {
-          last_updated: currentTime,
-          current_session_start: newSessionStart,
-          longest_coding_session: newLongestCodingSession,
-          // Update the last_updated for the language entry.
-          [`language_time.${language}.last_updated`]: currentTime,
-        },
-        $max: {
-          "level.current": calculateLevel(user.total_time / (60 * 1000)),
-        },
-      }
-    );
+        { session }
+      );
 
-    // Update the DailyTime document.
+      // ...then push the new log entry.
+      await UserTime.updateOne(
+        { token },
+        { $push: { log_entries: logEntry } },
+        { session }
+      );
+
+      // Next, update the rest of the fields.
+      await UserTime.updateOne(
+        { token },
+        {
+          $inc: {
+            total_time: effectiveTimeSpent,
+            daily_time: effectiveTimeSpent,
+            // Update language_time using dot-notation for the given language.
+            [`language_time.${language}.total_time`]: effectiveTimeSpent,
+            [`language_time.${language}.daily_time`]: effectiveTimeSpent,
+          },
+          $set: {
+            last_updated: currentTime,
+            current_session_start: newSessionStart,
+            longest_coding_session: newLongestCodingSession,
+            // Update the last_updated for the language entry.
+            [`language_time.${language}.last_updated`]: currentTime,
+          },
+          // Adjust level.current using the new total_time value.
+          $max: {
+            "level.current": calculateLevel(
+              (user.total_time + effectiveTimeSpent) / (60 * 1000)
+            ),
+          },
+        },
+        { session }
+      );
+
+      // Then update XP level details.
+      const currentXP = (user.total_time + effectiveTimeSpent) / (60 * 1000);
+      const newLevel = calculateLevel(currentXP);
+      const currentLevelThreshold = getXpForLevel(newLevel);
+      const nextLevelThreshold = getXpForLevel(newLevel + 1);
+      const xpIntoCurrentLevel = currentXP - currentLevelThreshold;
+      const xpRequiredForNextLevel = nextLevelThreshold - currentLevelThreshold;
+
+      await UserTime.updateOne(
+        { token },
+        {
+          $set: {
+            "level.xpAtCurrentLevel": xpIntoCurrentLevel,
+            "level.xpForNextLevel": xpRequiredForNextLevel,
+          },
+        },
+        { session }
+      );
+
+      await session.commitTransaction();
+      session.endSession();
+    } catch (error) {
+      await session.abortTransaction();
+      session.endSession();
+      throw error;
+    }
+
+    // Update DailyTime document outside the transaction if needed.
     const today = moment().utc().startOf("day").toDate();
     await DailyTime.findOneAndUpdate(
       { userId: user.userId, date: today },
       { $inc: { totalTime: effectiveTimeSpent } },
       { upsert: true }
-    );
-
-    const currentXP = user.total_time / (60 * 1000);
-    const newLevel = calculateLevel(currentXP);
-    const currentLevelThreshold = getXpForLevel(newLevel);
-    const nextLevelThreshold = getXpForLevel(newLevel + 1);
-    const xpIntoCurrentLevel = currentXP - currentLevelThreshold;
-    const xpRequiredForNextLevel = nextLevelThreshold - currentLevelThreshold;
-
-    await UserTime.updateOne(
-      { token },
-      {
-        $set: {
-          "level.xpAtCurrentLevel": xpIntoCurrentLevel,
-          "level.xpForNextLevel": xpRequiredForNextLevel,
-        },
-      }
     );
 
     return res.status(200).json({
