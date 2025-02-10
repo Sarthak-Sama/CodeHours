@@ -277,7 +277,7 @@ module.exports.fetchUser = async (req, res) => {
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
     const weeklyData = await DailyTime.aggregate([
-      { $match: { userId, data: { $gte: sevenDaysAgo } } },
+      { $match: { userId, date: { $gte: sevenDaysAgo } } },
       { $group: { _id: null, totalTime: { $sum: "$totalTime" } } },
     ]);
     const weeklyTime = weeklyData.length > 0 ? weeklyData[0].totalTime : 0;
