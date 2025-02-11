@@ -165,7 +165,7 @@ module.exports.logCodingTime = async (req, res) => {
     );
 
     // If no record was updated (i.e. no language record exists), push a new one.
-    if (langUpdateResult.nModified === 0) {
+    if (langUpdateResult.modifiedCount === 0) {
       await UserTime.updateOne(
         { token },
         {
