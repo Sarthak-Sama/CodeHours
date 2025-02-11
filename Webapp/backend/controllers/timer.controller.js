@@ -89,166 +89,130 @@ module.exports.logCodingTime = async (req, res) => {
       .json({ error: "endTime must be greater than startTime." });
   }
 
+  // In this version we assume that the client (or a very simple server–side adjustment)
+  // has already determined an effectiveStartTime. (If you need to use the user’s
+  // previous last_updated to adjust startTimestamp, you might do that via a $max operator.)
+  const effectiveStartTime = startTimestamp;
+  const effectiveTimeSpent = endTimestamp - effectiveStartTime;
+  if (effectiveTimeSpent <= 0) {
+    return res.status(200).json({ message: "No new time to log." });
+  }
+  const currentTime = endTimestamp;
+
+  // Calculate the cutoff date for logs older than 24 hours.
+  const cutoff = new Date(currentTime.getTime() - 24 * 60 * 60 * 1000);
+
+  // Build the new log entry.
+  const newLogEntry = {
+    instanceId,
+    startTime: effectiveStartTime,
+    endTime: currentTime,
+    duration: effectiveTimeSpent,
+    language,
+  };
+
   try {
-    await runTransactionWithRetry(async (session) => {
-      // Retrieve the user document within the session.
-      let user = await UserTime.findOne({ token }).session(session);
-      if (!user) {
-        // Throwing an error here will abort the transaction and bubble up.
-        throw new Error("User session not found.");
-      }
-
-      // Deduplication: Determine the effective start time.
-      // If the new log's start is earlier than user.last_updated, only count from user.last_updated onward.
-      let effectiveStartTime = startTimestamp;
-      if (user.last_updated && new Date(user.last_updated) > startTimestamp) {
-        effectiveStartTime = new Date(user.last_updated);
-      }
-      const effectiveTimeSpent = endTimestamp - effectiveStartTime;
-      if (effectiveTimeSpent <= 0) {
-        throw new Error("No new time to log.");
-      }
-
-      // Use the incoming endTimestamp as the current time.
-      const currentTime = endTimestamp;
-
-      // --- Overlapping Interval Deduplication ---
-      // Two intervals overlap if: new.start < existing.end AND new.end > existing.start.
-      const overlappingLog = user.time_logs.find((log) => {
-        const logStart = new Date(log.startTime);
-        const logEnd = new Date(log.endTime);
-        return effectiveStartTime < logEnd && currentTime > logStart;
-      });
-      if (overlappingLog) {
-        throw new Error("Overlapping log already exists.");
-      }
-
-      // --- Session Handling ---
-      const THRESHOLD_MS = 3 * 60 * 1000; // 3 minutes
-      let newSessionStart;
-      let newLongestCodingSession = user.longest_coding_session || 0;
-      if (
-        !user.current_session_start ||
-        currentTime - new Date(user.last_updated) > THRESHOLD_MS
-      ) {
-        if (user.current_session_start && user.last_updated) {
-          const endedSessionDuration =
-            new Date(user.last_updated) - new Date(user.current_session_start);
-          newLongestCodingSession = Math.max(
-            newLongestCodingSession,
-            endedSessionDuration
-          );
-        }
-        newSessionStart = currentTime;
-      } else {
-        newSessionStart = user.current_session_start;
-        const sessionDuration =
-          currentTime - new Date(user.current_session_start);
-        newLongestCodingSession = Math.max(
-          newLongestCodingSession,
-          sessionDuration
-        );
-      }
-
-      // --- Append the New Log Entry and Recalculate daily_time Using Logs ---
-      const newLogEntry = {
-        instanceId: instanceId,
-        startTime: effectiveStartTime,
-        endTime: currentTime,
-        duration: effectiveTimeSpent,
-        language: language,
-      };
-
-      // Append the new log.
-      user.time_logs.push(newLogEntry);
-
-      // Remove log entries older than 24 hours.
-      const cutoff = new Date(currentTime.getTime() - 24 * 60 * 60 * 1000);
-      user.time_logs = user.time_logs.filter(
-        (log) => new Date(log.endTime) >= cutoff
-      );
-
-      // Recalculate overall daily_time as the sum of durations from the logs in the last 24 hours.
-      const recalculatedDailyTime = user.time_logs.reduce(
-        (sum, log) => sum + log.duration,
-        0
-      );
-      user.daily_time = recalculatedDailyTime;
-
-      // Update the cumulative total time.
-      user.total_time += effectiveTimeSpent;
-
-      // --- Update Language-Specific Aggregates ---
-      let langRecord = user.language_time.find(
-        (item) => item.language === language
-      );
-      const languageLogs = user.time_logs.filter(
-        (log) => log.language === language
-      );
-      const languageDailyTime = languageLogs.reduce(
-        (sum, log) => sum + log.duration,
-        0
-      );
-
-      if (langRecord) {
-        langRecord.total_time += effectiveTimeSpent;
-        langRecord.daily_time = languageDailyTime;
-        // weekly_time can be updated elsewhere (e.g., from DailyTime docs)
-        langRecord.weekly_time += effectiveTimeSpent;
-        langRecord.last_updated = currentTime;
-      } else {
-        user.language_time.push({
-          language: language,
-          total_time: effectiveTimeSpent,
-          daily_time: effectiveTimeSpent,
-          weekly_time: effectiveTimeSpent,
-          last_updated: currentTime,
-        });
-      }
-
-      // --- Update Session Fields and Last Updated ---
-      user.current_session_start = newSessionStart;
-      user.longest_coding_session = newLongestCodingSession;
-      user.last_updated = currentTime;
-
-      // Save the updated user document within the transaction.
-      await user.save({ session });
-
-      // --- Update DailyTime Document ---
-      // This document (keyed by userId and today's midnight) is used later for weekly time calculations.
-      const today = getDailyKey(); // e.g., a function that returns today's date at midnight.
-      await DailyTime.findOneAndUpdate(
-        { userId: user.userId, date: today },
-        {
-          $inc: { totalTime: effectiveTimeSpent },
-          $setOnInsert: { userId: user.userId, date: today },
+    // The query ensures that:
+    //   (a) We find the correct user by token
+    //   (b) There is no overlapping log in the time_logs array
+    const query = {
+      token,
+      time_logs: {
+        $not: {
+          $elemMatch: {
+            startTime: { $lt: endTimestamp },
+            endTime: { $gt: effectiveStartTime },
+          },
         },
-        { upsert: true, session }
-      );
+      },
+    };
 
-      // --- Update User Level ---
-      // Assume total_time is in milliseconds; convert to minutes for XP calculations.
-      const currentXP = user.total_time / (60 * 1000);
-      const newLevel = calculateLevel(currentXP);
-      const currentLevelThreshold = getXpForLevel(newLevel);
-      const nextLevelThreshold = getXpForLevel(newLevel + 1);
-      const xpIntoCurrentLevel = currentXP - currentLevelThreshold;
-      const xpRequiredForNextLevel = nextLevelThreshold - currentLevelThreshold;
+    // The update uses atomic operators to:
+    //   - Push the new log entry
+    //   - Pull (remove) any log entries older than 24 hours
+    //   - Increment running totals (daily_time and total_time)
+    //   - Update session fields and last_updated
+    //   - Use $max to update longest_coding_session if the current interval is larger.
+    const update = {
+      $push: { time_logs: newLogEntry },
+      $pull: { time_logs: { endTime: { $lt: cutoff } } },
+      $inc: { total_time: effectiveTimeSpent, daily_time: effectiveTimeSpent },
+      $set: { last_updated: currentTime },
+      $max: { longest_coding_session: effectiveTimeSpent },
+    };
 
+    // Perform the atomic update.
+    const options = { new: true, runValidators: true };
+    let user = await UserTime.findOneAndUpdate(query, update, options);
+    if (!user) {
+      return res
+        .status(400)
+        .json({ error: "Overlapping log exists or user not found." });
+    }
+
+    // --- Update Language-Specific Aggregates ---
+    // Try to update an existing record in the language_time array.
+    const langUpdateResult = await UserTime.updateOne(
+      { token, "language_time.language": language },
+      {
+        $inc: {
+          "language_time.$.total_time": effectiveTimeSpent,
+          "language_time.$.daily_time": effectiveTimeSpent,
+          "language_time.$.weekly_time": effectiveTimeSpent,
+        },
+        $set: { "language_time.$.last_updated": currentTime },
+      }
+    );
+
+    // If no language record was updated, push a new one.
+    if (langUpdateResult.nModified === 0) {
       await UserTime.updateOne(
         { token },
         {
-          $set: {
-            "level.xpAtCurrentLevel": xpIntoCurrentLevel,
-            "level.xpForNextLevel": xpRequiredForNextLevel,
+          $push: {
+            language_time: {
+              language,
+              total_time: effectiveTimeSpent,
+              daily_time: effectiveTimeSpent,
+              weekly_time: effectiveTimeSpent,
+              last_updated: currentTime,
+            },
           },
-          $max: { "level.current": newLevel },
-        },
-        { session }
+        }
       );
-    });
+    }
 
-    // After a successful transaction, re-fetch the updated user document.
+    // --- Update the DailyTime Document ---
+    // Use an atomic upsert to update the DailyTime document for today.
+    await DailyTime.findOneAndUpdate(
+      { userId: user.userId, date: getDailyKey() },
+      {
+        $inc: { totalTime: effectiveTimeSpent },
+        $setOnInsert: { userId: user.userId, date: getDailyKey() },
+      },
+      { upsert: true }
+    );
+
+    // --- Update User Level Atomically ---
+    // (Assume total_time is in milliseconds; convert to minutes for XP calculations.)
+    const currentXP = user.total_time / (60 * 1000);
+    const newLevel = calculateLevel(currentXP);
+    const currentLevelThreshold = getXpForLevel(newLevel);
+    const nextLevelThreshold = getXpForLevel(newLevel + 1);
+    const xpIntoCurrentLevel = currentXP - currentLevelThreshold;
+    // Note: xpRequiredForNextLevel is calculated but not used in the update below.
+    await UserTime.updateOne(
+      { token },
+      {
+        $set: {
+          "level.xpAtCurrentLevel": xpIntoCurrentLevel,
+          "level.xpForNextLevel": nextLevelThreshold - currentLevelThreshold,
+        },
+        $max: { "level.current": newLevel },
+      }
+    );
+
+    // Re-fetch the updated user document.
     const updatedUser = await UserTime.findOne({ token });
     return res.status(200).json({
       message: "Time logged successfully",
@@ -256,6 +220,30 @@ module.exports.logCodingTime = async (req, res) => {
     });
   } catch (error) {
     return handleError(res, error, "log coding time");
+  }
+};
+
+module.exports.updateAboutSection = async (req, res) => {
+  try {
+    const { userId, content } = req.body;
+
+    // Use findOneAndUpdate with a $set operator to update the about field atomically.
+    const updatedUser = await UserTime.findOneAndUpdate(
+      { userId },
+      { $set: { about: content } },
+      { new: true }
+    );
+
+    if (!updatedUser) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    return res.status(200).json({
+      message: "About section updated successfully",
+      aboutSection: updatedUser.about,
+    });
+  } catch (error) {
+    return handleError(res, error, "update about section");
   }
 };
 
@@ -372,10 +360,7 @@ module.exports.fetchUser = async (req, res) => {
     });
 
     // Sum the totalTime from the fetched DailyTime documents to calculate weekly_time
-    let weekly_time = 0;
-    dailyTimes.forEach((doc) => {
-      weekly_time += doc.totalTime;
-    });
+    const weekly_time = dailyTimes.reduce((sum, doc) => sum + doc.totalTime, 0);
 
     // Optionally update the user document's weekly_time field (if you want to reflect it here)
     user.weekly_time = weekly_time;
