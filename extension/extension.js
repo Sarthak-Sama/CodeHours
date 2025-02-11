@@ -10,8 +10,9 @@ const instanceId = randomBytes(16).toString("hex");
 const TIMER_UPDATE_INTERVAL = 2 * 60 * 1000; // 2 minutes in milliseconds
 const ENDPOINT = "https://codetracker-backend-fc9r.onrender.com/api/logTime"; // Logging endpoint
 const GET_ENDPOINT =
-  "https://codetracker-backend-fc9r.onrender.com/api/getDailyTime"; // New endpoint for fetching total time
+  "https://codetracker-backend-fc9r.onrender.com/api/getDailyTime"; // Endpoint for fetching total time
 const INACTIVITY_TIMEOUT = 5 * 60 * 1000; // 5 minutes in milliseconds
+const MIN_INTERVAL_MS = 1000; // Minimal interval threshold (1 second) to log
 
 // Variables for heartbeat, session key, and timer
 let lastHeartbeatTime;
@@ -90,11 +91,15 @@ const sendHeartbeat = (language) => {
 /**
  * Logs the time accumulated for the current language session as an interval
  * from languageStartTime to the current time and then resets the timer.
+ * Only logs if the interval exceeds MIN_INTERVAL_MS.
  */
 const logCurrentLanguageTime = () => {
   const now = Date.now();
-  // Only log if there is a positive interval
-  if (currentLanguage && now > languageStartTime) {
+  const duration = now - languageStartTime;
+
+  if (duration < MIN_INTERVAL_MS) {
+    console.log("Interval too short, not logging.");
+  } else if (currentLanguage) {
     logCodingTime(currentLanguage, languageStartTime, now);
   }
   languageStartTime = now; // Reset for the next session
@@ -102,38 +107,42 @@ const logCurrentLanguageTime = () => {
 
 /**
  * Handles file save events.
+ * NOTE: We no longer log time on file save.
  * @param {vscode.TextDocument} document The saved text document.
  */
 const onDidSaveTextDocument = (document) => {
   lastActivityTime = Date.now();
   const newLanguage = document.languageId;
 
-  // If the language changed, log the time for the previous language session.
+  // If the language changed on save, just update the current language and reset the start time.
   if (newLanguage !== currentLanguage) {
-    logCurrentLanguageTime();
+    console.log("Language changed on save, resetting language session.");
     currentLanguage = newLanguage;
-  } else {
-    // Even if it's the same language, log the time since the last log event.
-    logCurrentLanguageTime();
+    languageStartTime = Date.now();
   }
-
   sendHeartbeat(newLanguage);
 };
 
 /**
  * Handles text document change events.
+ * Logs the previous language session only when the language changes.
  * @param {vscode.TextDocumentChangeEvent} event The document change event.
  */
 const onDidChangeTextDocument = (event) => {
-  lastActivityTime = Date.now();
+  const now = Date.now();
+  lastActivityTime = now;
   const newLanguage = event.document.languageId;
 
-  // If the user switched languages, log the previous language session.
-  if (newLanguage !== currentLanguage) {
+  // If the user has been inactive, reset the session instead of logging a long interval.
+  if (now - languageStartTime > INACTIVITY_TIMEOUT) {
+    console.log("Resetting language session due to inactivity on change.");
+    languageStartTime = now;
+  } else if (newLanguage !== currentLanguage) {
+    // Log the time for the previous language session if the language has changed.
     logCurrentLanguageTime();
     currentLanguage = newLanguage;
   }
-  // Optionally, you can send a heartbeat here if desired.
+  sendHeartbeat(newLanguage);
 };
 
 /**
@@ -275,10 +284,12 @@ const startTimer = () => {
 
   // Every TIMER_UPDATE_INTERVAL, log the current language's time (if the user is active).
   loggingIntervalId = setInterval(() => {
-    if (Date.now() - lastActivityTime <= INACTIVITY_TIMEOUT) {
-      logCurrentLanguageTime();
+    const now = Date.now();
+    if (now - lastActivityTime > INACTIVITY_TIMEOUT) {
+      console.log("User inactive during logging interval. Resetting session.");
+      languageStartTime = now; // Reset session so idle time is not logged
     } else {
-      console.log("User inactive during logging interval. Not logging time.");
+      logCurrentLanguageTime();
     }
   }, TIMER_UPDATE_INTERVAL);
 };
