@@ -27,43 +27,6 @@ function getXpForLevel(level) {
   return (100 * (level - 1) * level) / 2;
 }
 
-/**
- * Runs the given transaction function with retry logic.
- * If a transient error (like WriteConflict) occurs, the transaction is retried.
- *
- * @param {Function} txnFunc - The function that performs the transaction. Receives the session as its argument.
- */
-async function runTransactionWithRetry(txnFunc) {
-  const session = await UserTime.startSession();
-  while (true) {
-    try {
-      session.startTransaction();
-      await txnFunc(session);
-      await session.commitTransaction();
-      session.endSession();
-      break; // success – exit the retry loop.
-    } catch (error) {
-      // If error is transient, retry.
-      if (
-        error.hasErrorLabel &&
-        error.hasErrorLabel("TransientTransactionError")
-      ) {
-        console.warn(
-          "TransientTransactionError, retrying transaction...",
-          error
-        );
-        await session.abortTransaction();
-        // Optionally: add a delay before retrying.
-        continue;
-      } else {
-        await session.abortTransaction();
-        session.endSession();
-        throw error;
-      }
-    }
-  }
-}
-
 module.exports.logCodingTime = async (req, res) => {
   const { token, language, startTime, endTime, instanceId } = req.body;
 
@@ -136,17 +99,27 @@ module.exports.logCodingTime = async (req, res) => {
         .json({ error: "Overlapping log exists or user not found." });
     }
 
-    // Step 2: Update totals, session fields, and remove old logs.
+    // Step 2: First, remove old logs from the time_logs array.
+    await UserTime.findOneAndUpdate(
+      { token },
+      { $pull: { time_logs: { endTime: { $lt: cutoff } } } }
+    );
+
+    // Re-fetch the user document after removing old logs.
+    user = await UserTime.findOne({ token });
+
+    // Recalculate daily_time by summing durations of the remaining logs.
+    const recalculatedDailyTime = user.time_logs.reduce(
+      (acc, log) => acc + log.duration,
+      0
+    );
+
+    // Now update totals and session fields
     user = await UserTime.findOneAndUpdate(
       { token },
       {
-        $pull: { time_logs: { endTime: { $lt: cutoff } } },
-        $inc: {
-          total_time: effectiveTimeSpent,
-          daily_time: effectiveTimeSpent,
-        },
-        $set: { last_updated: currentTime },
-        $max: { longest_coding_session: effectiveTimeSpent },
+        $inc: { total_time: effectiveTimeSpent },
+        $set: { daily_time: recalculatedDailyTime, last_updated: currentTime },
       },
       { new: true }
     );
