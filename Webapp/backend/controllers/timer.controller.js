@@ -1,10 +1,11 @@
-const UserTime = require("../models/time.model");
+const UserTime = require("../models/userTime.model");
+const DailyTime = require("../models/dailyTime.model");
 const crypto = require("crypto");
 const moment = require("moment");
-const DailyTime = require("../models/dailyTime.model");
 
 // Helper functions
 const getDailyKey = () => moment().utc().startOf("day").toDate();
+
 const handleError = (res, error, context) => {
   console.error(`${context} Error:`, error);
   return res.status(500).json({
@@ -13,24 +14,27 @@ const handleError = (res, error, context) => {
   });
 };
 
-// Using the formula: XP_total(n) = 100 * (n-1)*n/2
+// XP and Level calculations remain the same.
 function calculateLevel(totalXP) {
   const discriminant = 1 + (4 * totalXP) / 50;
   const n = (1 + Math.sqrt(discriminant)) / 2;
   return Math.max(1, Math.floor(n));
 }
 
-// Helper function to get the total XP threshold for a given level.
 function getXpForLevel(level) {
-  // For level 1, threshold is 0 XP.
   if (level <= 1) return 0;
   return (100 * (level - 1) * level) / 2;
 }
 
+/**
+ * logCodingTime
+ * Logs a new coding session, removes logs older than 24h, updates aggregates,
+ * updates language-specific stats using the Map field, updates DailyTime, and adjusts level.
+ */
 module.exports.logCodingTime = async (req, res) => {
   const { token, language, startTime, endTime, instanceId } = req.body;
 
-  // Validate input.
+  // Validate inputs.
   if (!token || !language || !startTime || !endTime) {
     return res.status(400).json({
       error:
@@ -38,7 +42,7 @@ module.exports.logCodingTime = async (req, res) => {
     });
   }
 
-  // Convert incoming timestamps to Date objects.
+  // Parse timestamps.
   const startTimestamp = new Date(startTime);
   const endTimestamp = new Date(endTime);
   if (isNaN(startTimestamp) || isNaN(endTimestamp)) {
@@ -52,111 +56,98 @@ module.exports.logCodingTime = async (req, res) => {
       .json({ error: "endTime must be greater than startTime." });
   }
 
-  // We assume that the client (or a server–side adjustment) determines the effectiveStartTime.
-  const effectiveStartTime = startTimestamp;
-  const effectiveTimeSpent = endTimestamp - effectiveStartTime;
+  const effectiveTimeSpent = endTimestamp - startTimestamp;
   if (effectiveTimeSpent <= 0) {
     return res.status(200).json({ message: "No new time to log." });
   }
   const currentTime = endTimestamp;
-
-  // Calculate the cutoff date for log entries older than 24 hours.
   const cutoff = new Date(currentTime.getTime() - 24 * 60 * 60 * 1000);
 
-  // Build the new log entry.
+  // Build log entry.
   const newLogEntry = {
     instanceId,
-    startTime: effectiveStartTime,
+    startTime: startTimestamp,
     endTime: currentTime,
     duration: effectiveTimeSpent,
     language,
   };
 
   try {
-    // Step 1: Push the new log entry.
-    // The query ensures that there is no overlapping log in the time_logs array.
+    // Step 1: Atomically push new log and pull out old logs, and increment total_time.
+    // The query ensures there is no overlapping log.
     const query = {
       token,
       time_logs: {
         $not: {
           $elemMatch: {
             startTime: { $lt: endTimestamp },
-            endTime: { $gt: effectiveStartTime },
+            endTime: { $gt: startTimestamp },
           },
         },
       },
     };
+    const updateOps = {
+      $push: { time_logs: newLogEntry },
+      $pull: { time_logs: { endTime: { $lt: cutoff } } },
+      $inc: { total_time: effectiveTimeSpent },
+      $set: { updatedAt: currentTime }, // using Mongoose timestamps instead of manual last_updated
+    };
 
-    let user = await UserTime.findOneAndUpdate(
-      query,
-      { $push: { time_logs: newLogEntry } },
-      { new: true }
-    );
-
+    let user = await UserTime.findOneAndUpdate(query, updateOps, {
+      new: true,
+    }).lean();
     if (!user) {
       return res
         .status(400)
         .json({ error: "Overlapping log exists or user not found." });
     }
 
-    // Step 2: First, remove old logs from the time_logs array.
-    await UserTime.findOneAndUpdate(
-      { token },
-      { $pull: { time_logs: { endTime: { $lt: cutoff } } } }
-    );
-
-    // Re-fetch the user document after removing old logs.
-    user = await UserTime.findOne({ token });
-
-    // Recalculate daily_time by summing durations of the remaining logs.
+    // Step 2: Recalculate daily_time from time_logs.
     const recalculatedDailyTime = user.time_logs.reduce(
       (acc, log) => acc + log.duration,
       0
     );
-
-    // Now update totals and session fields
     user = await UserTime.findOneAndUpdate(
       { token },
-      {
-        $inc: { total_time: effectiveTimeSpent },
-        $set: { daily_time: recalculatedDailyTime, last_updated: currentTime },
-      },
+      { $set: { daily_time: recalculatedDailyTime, updatedAt: currentTime } },
       { new: true }
-    );
+    ).lean();
 
-    // Step 3: Update language-specific aggregates.
-    const langUpdateResult = await UserTime.updateOne(
-      { token, "language_time.language": language },
+    // Step 3: Update language-specific aggregates using the Map.
+    // Construct the dynamic keys for the language field.
+    const langKeyTotal = `language_time.${language}.total_time`;
+    const langKeyDaily = `language_time.${language}.daily_time`;
+    const langKeyWeekly = `language_time.${language}.weekly_time`;
+    const langKeyLastUpdated = `language_time.${language}.last_updated`;
+
+    // Try updating existing language stats.
+    const langUpdate = await UserTime.updateOne(
+      { token, [`language_time.${language}`]: { $exists: true } },
       {
         $inc: {
-          "language_time.$.total_time": effectiveTimeSpent,
-          "language_time.$.daily_time": effectiveTimeSpent,
-          "language_time.$.weekly_time": effectiveTimeSpent,
+          [langKeyTotal]: effectiveTimeSpent,
+          [langKeyDaily]: effectiveTimeSpent,
+          [langKeyWeekly]: effectiveTimeSpent,
         },
-        $set: { "language_time.$.last_updated": currentTime },
+        $set: { [langKeyLastUpdated]: currentTime },
       }
     );
-
-    // If no record was updated (i.e. no language record exists), push a new one.
-    if (langUpdateResult.modifiedCount === 0) {
+    // If no language record exists, then add one.
+    if (langUpdate.modifiedCount === 0) {
+      // Create a new subdocument object.
+      const newLangEntry = {
+        daily_time: effectiveTimeSpent,
+        weekly_time: effectiveTimeSpent,
+        total_time: effectiveTimeSpent,
+        last_updated: currentTime,
+      };
       await UserTime.updateOne(
         { token },
-        {
-          $push: {
-            language_time: {
-              language,
-              total_time: effectiveTimeSpent,
-              daily_time: effectiveTimeSpent,
-              weekly_time: effectiveTimeSpent,
-              last_updated: currentTime,
-            },
-          },
-        },
-        {}
+        { $set: { [`language_time.${language}`]: newLangEntry } }
       );
     }
 
-    // Step 4: Update the DailyTime document for today.
+    // Step 4: Update DailyTime for today.
     await DailyTime.findOneAndUpdate(
       { userId: user.userId, date: getDailyKey() },
       {
@@ -166,9 +157,8 @@ module.exports.logCodingTime = async (req, res) => {
       { upsert: true, new: true }
     );
 
-    // Step 5: Update the user's level.
-    // (Assuming total_time is in milliseconds and XP is calculated in minutes.)
-    const currentXP = user.total_time / (60 * 1000);
+    // Step 5: Update level info based on total_time.
+    const currentXP = user.total_time / (60 * 1000); // XP in minutes
     const newLevel = calculateLevel(currentXP);
     const currentLevelThreshold = getXpForLevel(newLevel);
     const nextLevelThreshold = getXpForLevel(newLevel + 1);
@@ -182,12 +172,11 @@ module.exports.logCodingTime = async (req, res) => {
           "level.xpForNextLevel": nextLevelThreshold - currentLevelThreshold,
         },
         $max: { "level.current": newLevel },
-      },
-      {}
+      }
     );
 
-    // Re-fetch the updated user document.
-    const updatedUser = await UserTime.findOne({ token });
+    // Re-fetch updated user.
+    const updatedUser = await UserTime.findOne({ token }).lean();
     return res.status(200).json({
       message: "Time logged successfully",
       user: updatedUser,
@@ -197,20 +186,23 @@ module.exports.logCodingTime = async (req, res) => {
   }
 };
 
+/**
+ * updateAboutSection
+ * Updates the user's about section.
+ */
 module.exports.updateAboutSection = async (req, res) => {
   try {
     const { userId, content } = req.body;
+    if (!userId) return res.status(400).json({ error: "User Id is required." });
 
-    // Use findOneAndUpdate with a $set operator to update the about field atomically.
     const updatedUser = await UserTime.findOneAndUpdate(
       { userId },
       { $set: { about: content } },
       { new: true }
-    );
+    ).lean();
 
-    if (!updatedUser) {
+    if (!updatedUser)
       return res.status(404).json({ message: "User not found" });
-    }
 
     return res.status(200).json({
       message: "About section updated successfully",
@@ -221,43 +213,20 @@ module.exports.updateAboutSection = async (req, res) => {
   }
 };
 
-module.exports.updateAboutSection = async (req, res) => {
-  try {
-    const { userId, content } = req.body;
-
-    // Find the user by userId and update the 'about' field with the new content
-    const updatedUser = await UserTime.findOneAndUpdate(
-      { userId }, // Filter to find the user by userId
-      { $set: { about: content } }, // Update the 'about' field
-      { new: true } // Return the updated document
-    );
-
-    if (!updatedUser) {
-      return res.status(404).json({ message: "User not found" });
-    }
-
-    // Return the updated user information
-    return res.status(200).json({
-      message: "About section updated successfully",
-      aboutSection: updatedUser.about,
-    });
-  } catch (error) {
-    handleError(error);
-  }
-};
-
+/**
+ * getUserTimeStats
+ * Returns time statistics based on a requested period.
+ */
 module.exports.getUserTimeStats = async (req, res) => {
   const { token, period } = req.query;
   const validPeriods = ["daily", "weekly", "monthly", "yearly", "total"];
-
   if (!token || !period || !validPeriods.includes(period)) {
     return res.status(400).json({
       error: `Valid token and period (${validPeriods.join(", ")}) are required`,
     });
   }
-
   try {
-    const user = await UserTime.findOne({ token });
+    const user = await UserTime.findOne({ token }).lean();
     if (!user) return res.status(404).json({ error: "User not found" });
 
     let stats = {};
@@ -278,14 +247,13 @@ module.exports.getUserTimeStats = async (req, res) => {
         stats = { time: user.total_time };
         break;
     }
-
     return res.status(200).json(stats);
   } catch (error) {
     return handleError(res, error, "fetch statistics");
   }
 };
 
-// Helper functions for stats
+// Helper functions for stats.
 const getMonthlyStats = async (userId) => {
   const startOfMonth = moment().utc().startOf("month").toDate();
   const result = await DailyTime.aggregate([
@@ -304,57 +272,47 @@ const getYearlyStats = async (userId) => {
   return { time: result.length ? result[0].total : 0 };
 };
 
+/**
+ * fetchUser
+ * Fetches a user document and computes weekly_time from DailyTime records.
+ */
 module.exports.fetchUser = async (req, res) => {
   const { userId } = req.body;
-
-  if (!userId) {
-    return res.status(400).json({ error: "User Id not provided" });
-  }
-
+  if (!userId) return res.status(400).json({ error: "User Id not provided" });
   try {
-    // Fetch the user document
-    const user = await UserTime.findOne({ userId });
-    if (!user) {
-      return res.status(404).json({ error: "User not found" });
-    }
+    const user = await UserTime.findOne({ userId }).lean();
+    if (!user) return res.status(404).json({ error: "User not found" });
 
-    // Calculate the start of today (midnight)
     const startOfToday = new Date();
     startOfToday.setHours(0, 0, 0, 0);
-
-    // Determine the date 6 days before today so that we cover 7 days (today plus the previous 6 days)
     const sevenDaysAgo = new Date(
       startOfToday.getTime() - 6 * 24 * 60 * 60 * 1000
     );
 
-    // Fetch DailyTime documents for this user from the past 7 days
     const dailyTimes = await DailyTime.find({
       userId,
       date: { $gte: sevenDaysAgo },
-    });
+    }).lean();
 
-    // Sum the totalTime from the fetched DailyTime documents to calculate weekly_time
     const weekly_time = dailyTimes.reduce((sum, doc) => sum + doc.totalTime, 0);
-
-    // Optionally update the user document's weekly_time field (if you want to reflect it here)
     user.weekly_time = weekly_time;
-
-    return res.status(200).json({
-      message: "User fetched successfully",
-      user,
-    });
+    return res.status(200).json({ message: "User fetched successfully", user });
   } catch (error) {
     console.error("Error fetching user:", error);
     return res.status(500).json({ error: "Internal server error" });
   }
 };
 
+/**
+ * getLeaderboard
+ * Returns the top 100 users sorted by daily_time.
+ */
 module.exports.getLeaderboard = async (req, res) => {
   try {
     const leaderboard = await UserTime.find()
       .sort({ daily_time: -1 })
-      .limit(100);
-
+      .limit(100)
+      .lean();
     return res.status(200).json({
       message: "Leaderboard fetched successfully.",
       data: leaderboard,
@@ -364,34 +322,38 @@ module.exports.getLeaderboard = async (req, res) => {
   }
 };
 
+/**
+ * getActivityData
+ * Returns all DailyTime records for a given user.
+ */
 module.exports.getActivityData = async (req, res) => {
   try {
     const { userId } = req.query;
-    if (!userId) {
+    if (!userId)
       return res.status(400).json({ message: "User ID is required" });
-    }
 
-    const activityData = await DailyTime.find({ userId });
-
+    const activityData = await DailyTime.find({ userId }).lean();
     if (!activityData.length) {
       return res
         .status(404)
         .json({ message: "No activity data found for this user" });
     }
-
-    res.status(200).json({
+    return res.status(200).json({
       message: "Activity Data fetched successfully.",
       data: activityData,
     });
   } catch (error) {
     console.error("Error fetching activity data:", error);
-    res.status(500).json({ message: "Internal Server Error" });
+    return res.status(500).json({ message: "Internal server error" });
   }
 };
 
+/**
+ * clerkUpdate
+ * Processes webhooks from Clerk to update profile picture.
+ */
 module.exports.clerkUpdate = async (req, res) => {
   try {
-    // Verify webhook signature (for security)
     const signature = req.headers["clerk-signature"];
     const rawBody = JSON.stringify(req.body);
     const expectedSignature = crypto
@@ -404,84 +366,66 @@ module.exports.clerkUpdate = async (req, res) => {
     }
 
     const { type, data } = req.body;
-
     if (type === "user.updated") {
       const { id, image_url } = data;
-
-      // Update the user's profile picture in your database
       await UserTime.updateOne({ userId: id }, { $set: { pfpUrl: image_url } });
-
       console.log(`Updated profile picture for user ${id}`);
     }
-
-    res.status(200).json({ message: "Webhook received successfully" });
+    return res.status(200).json({ message: "Webhook received successfully" });
   } catch (error) {
     console.error("Error handling webhook:", error);
-    res.status(500).json({ message: "Internal server error" });
+    return res.status(500).json({ message: "Internal server error" });
   }
 };
 
+/**
+ * getCodingTime
+ * Returns coding time statistics for a user and whether the user is actively coding.
+ */
 module.exports.getCodingTime = async (req, res) => {
   try {
-    // Extract the required user parameter and optional timespan from the query string.
     const username = req.query.user;
-    if (!username) {
+    if (!username)
       return res.status(400).json({ error: "User parameter is required." });
-    }
 
-    // Find the user's coding time data in the database.
-    const userTime = await UserTime.findOne({ username: username });
-    if (!userTime) {
-      return res.status(404).json({ error: "User not found." });
-    }
+    const userTime = await UserTime.findOne({ username }).lean();
+    if (!userTime) return res.status(404).json({ error: "User not found." });
 
-    // Determine which time value to return:
-    // If a timespan is specified (daily or weekly), return that; otherwise, use total_time.
     let totalTime;
     const timespan = req.query.timespan;
-    if (timespan === "daily") {
-      totalTime = userTime.daily_time;
-    } else if (timespan === "weekly") {
-      totalTime = userTime.weekly_time;
-    } else {
-      totalTime = userTime.total_time;
-    }
+    if (timespan === "daily") totalTime = userTime.daily_time;
+    else if (timespan === "weekly") totalTime = userTime.weekly_time;
+    else totalTime = userTime.total_time;
 
-    // Determine if the user is actively coding.
-    // For this example, we assume that if the time elapsed since the last update is less than 150 seconds, the user is coding.
     const now = new Date();
-    const lastUpdated = userTime.last_updated;
-    const diffSeconds = (now - lastUpdated) / 1000;
+    const diffSeconds = (now - userTime.updatedAt) / 1000;
     const isCoding = diffSeconds <= 120; // adjust threshold as needed
 
-    // Respond with data formatted for the widget.
-    res.json({
-      totalTime: totalTime,
-      isCoding: isCoding,
-      lastUpdated: lastUpdated.toISOString(),
+    return res.json({
+      totalTime,
+      isCoding,
+      lastUpdated: userTime.updatedAt.toISOString(),
     });
   } catch (error) {
     console.error("Error in getCodingTime:", error);
-    res.status(500).json({ error: "Server error." });
+    return res.status(500).json({ error: "Server error." });
   }
 };
 
+/**
+ * getDailyTime
+ * Returns the daily_time field for a given user based on token.
+ */
 module.exports.getDailyTime = async (req, res) => {
   const { token } = req.query;
-
-  if (!token) {
+  if (!token)
     return res.status(400).json({ error: "Token parameter is missing." });
-  }
-
   try {
-    const userTime = await UserTime.findOne({ token });
-    if (!userTime) {
-      return res.status(404).json({ error: "User not found." });
-    }
-
+    const userTime = await UserTime.findOne({ token }).lean();
+    if (!userTime) return res.status(404).json({ error: "User not found." });
     return res.status(200).json({ daily_time: userTime.daily_time });
   } catch (error) {
     console.error("Error retrieving daily time:", error);
-    return res.status(500).json({ error: "Internal server error." });
+    return res.status(500).json({ error: "Internal server error" });
   }
 };
