@@ -1,4 +1,4 @@
-const UserTime = require("../models/userTime.model");
+const UserTime = require("../models/time.model");
 const DailyTime = require("../models/dailyTime.model");
 const crypto = require("crypto");
 const moment = require("moment");
@@ -32,6 +32,7 @@ function getXpForLevel(level) {
  * updates language-specific stats using the Map field, updates DailyTime, and adjusts level.
  */
 module.exports.logCodingTime = async (req, res) => {
+  console.log("chala");
   const { token, language, startTime, endTime, instanceId } = req.body;
 
   // Validate inputs.

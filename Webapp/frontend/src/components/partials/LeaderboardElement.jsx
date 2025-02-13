@@ -7,7 +7,8 @@ function LeaderboardElement({ data, formatTime }) {
   const oneDayAgoUTC = Date.now() - 24 * 60 * 60 * 1000;
 
   // Sort languages by time and take top 4
-  const topLanguages = data.language_time
+  const topLanguages = Object.entries(data.language_time)
+    .map(([language, langData]) => ({ language, ...langData }))
     .sort((a, b) => b.total_time - a.total_time)
     .slice(0, 6);
 

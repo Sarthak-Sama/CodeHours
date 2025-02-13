@@ -313,7 +313,16 @@ function ProfilePage({ formatTime }) {
               <div className="w-full md:w-[50%]">
                 <StatsComponent
                   dailyData={dailyData}
-                  langDataArray={viewingUser.language_time}
+                  langDataArray={
+                    viewingUser.language_time
+                      ? Object.entries(viewingUser.language_time).map(
+                          ([language, langData]) => ({
+                            language,
+                            ...langData,
+                          })
+                        )
+                      : []
+                  }
                   formatTime={formatTime}
                   formatLanguage={formatLanguage}
                 />
@@ -376,7 +385,16 @@ function ProfilePage({ formatTime }) {
                 </div>
                 <div className="w-full md:w-1/2 mt-10 mb-12">
                   <LanguageTimeDisplay
-                    langDataArray={viewingUser.language_time}
+                    langDataArray={
+                      viewingUser.language_time
+                        ? Object.entries(viewingUser.language_time).map(
+                            ([language, langData]) => ({
+                              language,
+                              ...langData,
+                            })
+                          )
+                        : []
+                    }
                     formatTime={formatTime}
                     formatLanguage={formatLanguage}
                   />
