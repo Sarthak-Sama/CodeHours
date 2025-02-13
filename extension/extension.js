@@ -8,9 +8,8 @@ const instanceId = randomBytes(16).toString("hex");
 
 // Constants
 const TIMER_UPDATE_INTERVAL = 2 * 60 * 1000; // 2 minutes in milliseconds
-const ENDPOINT = "https://codetracker-backend-fc9r.onrender.com/api/logTime"; // Logging endpoint
-const GET_ENDPOINT =
-  "https://codetracker-backend-fc9r.onrender.com/api/getDailyTime"; // Endpoint for fetching total time
+const ENDPOINT = "http://localhost:3000/api/logTime"; // Logging endpoint
+const GET_ENDPOINT = "http://localhost:3000/api/getDailyTime"; // Endpoint for fetching total time
 const INACTIVITY_TIMEOUT = 5 * 60 * 1000; // 5 minutes in milliseconds
 const MIN_INTERVAL_MS = 1000; // Minimal interval threshold (1 second) to log
 

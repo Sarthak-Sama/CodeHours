@@ -28,8 +28,13 @@ function getXpForLevel(level) {
 
 /**
  * logCodingTime
- * Logs a new coding session, removes logs older than 24h, updates aggregates,
- * updates language-specific stats using the Map field, updates DailyTime, and adjusts level.
+ * Logs a new coding session.
+ * - Removes the previous session log mechanism.
+ * - Increments total_time.
+ * - Resets/increments daily_time based on the IST day (00:00 IST is the new day).
+ * - Updates language-specific aggregates.
+ * - Updates the DailyTime collection using a day key corresponding to 00:00 IST.
+ * - Updates level info.
  */
 module.exports.logCodingTime = async (req, res) => {
   console.log("chala");
@@ -62,129 +67,125 @@ module.exports.logCodingTime = async (req, res) => {
     return res.status(200).json({ message: "No new time to log." });
   }
   const currentTime = endTimestamp;
-  const cutoff = new Date(currentTime.getTime() - 24 * 60 * 60 * 1000);
 
-  // Build log entry.
-  const newLogEntry = {
-    instanceId,
-    startTime: startTimestamp,
-    endTime: currentTime,
-    duration: effectiveTimeSpent,
-    language,
+  // Helper: Get current IST date as a string "YYYY-MM-DD"
+  function getCurrentISTDateString() {
+    const nowUTC = new Date();
+    // Add 5.5 hours offset
+    const nowIST = new Date(nowUTC.getTime() + 5.5 * 3600 * 1000);
+    const year = nowIST.getFullYear();
+    const month = String(nowIST.getMonth() + 1).padStart(2, "0");
+    const day = String(nowIST.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  }
+
+  const currentISTDate = getCurrentISTDateString();
+
+  // Fetch the user by token.
+  let user = await UserTime.findOne({ token });
+  if (!user) {
+    return res.status(404).json({ error: "User not found." });
+  }
+
+  // Build update object for the UserTime document.
+  // If the stored IST date matches today, increment daily_time.
+  // Otherwise, reset daily_time to the current effectiveTimeSpent and update the stored IST date.
+  let updateFields = {
+    $inc: { total_time: effectiveTimeSpent },
+    $set: { updatedAt: currentTime },
   };
 
-  try {
-    // Step 1: Atomically push new log and pull out old logs, and increment total_time.
-    // The query ensures there is no overlapping log.
-    const query = {
-      token,
-      time_logs: {
-        $not: {
-          $elemMatch: {
-            startTime: { $lt: endTimestamp },
-            endTime: { $gt: startTimestamp },
-          },
-        },
+  if (user.daily_ist_date === currentISTDate) {
+    updateFields.$inc.daily_time = effectiveTimeSpent;
+  } else {
+    updateFields.$set.daily_time = effectiveTimeSpent;
+    updateFields.$set.daily_ist_date = currentISTDate;
+  }
+
+  // Update the user document.
+  user = await UserTime.findOneAndUpdate({ token }, updateFields, {
+    new: true,
+  });
+
+  // Step 3: Update language-specific aggregates.
+  const langKeyTotal = `language_time.${language}.total_time`;
+  const langKeyDaily = `language_time.${language}.daily_time`;
+  const langKeyWeekly = `language_time.${language}.weekly_time`;
+  const langKeyLastUpdated = `language_time.${language}.last_updated`;
+
+  const langUpdate = await UserTime.updateOne(
+    { token, [`language_time.${language}`]: { $exists: true } },
+    {
+      $inc: {
+        [langKeyTotal]: effectiveTimeSpent,
+        [langKeyDaily]: effectiveTimeSpent,
+        [langKeyWeekly]: effectiveTimeSpent,
       },
-    };
-    const updateOps = {
-      $push: { time_logs: newLogEntry },
-      $pull: { time_logs: { endTime: { $lt: cutoff } } },
-      $inc: { total_time: effectiveTimeSpent },
-      $set: { updatedAt: currentTime }, // using Mongoose timestamps instead of manual last_updated
-    };
-
-    let user = await UserTime.findOneAndUpdate(query, updateOps, {
-      new: true,
-    }).lean();
-    if (!user) {
-      return res
-        .status(400)
-        .json({ error: "Overlapping log exists or user not found." });
+      $set: { [langKeyLastUpdated]: currentTime },
     }
-
-    // Step 2: Recalculate daily_time from time_logs.
-    const recalculatedDailyTime = user.time_logs.reduce(
-      (acc, log) => acc + log.duration,
-      0
-    );
-    user = await UserTime.findOneAndUpdate(
-      { token },
-      { $set: { daily_time: recalculatedDailyTime, updatedAt: currentTime } },
-      { new: true }
-    ).lean();
-
-    // Step 3: Update language-specific aggregates using the Map.
-    // Construct the dynamic keys for the language field.
-    const langKeyTotal = `language_time.${language}.total_time`;
-    const langKeyDaily = `language_time.${language}.daily_time`;
-    const langKeyWeekly = `language_time.${language}.weekly_time`;
-    const langKeyLastUpdated = `language_time.${language}.last_updated`;
-
-    // Try updating existing language stats.
-    const langUpdate = await UserTime.updateOne(
-      { token, [`language_time.${language}`]: { $exists: true } },
-      {
-        $inc: {
-          [langKeyTotal]: effectiveTimeSpent,
-          [langKeyDaily]: effectiveTimeSpent,
-          [langKeyWeekly]: effectiveTimeSpent,
-        },
-        $set: { [langKeyLastUpdated]: currentTime },
-      }
-    );
-    // If no language record exists, then add one.
-    if (langUpdate.modifiedCount === 0) {
-      // Create a new subdocument object.
-      const newLangEntry = {
-        daily_time: effectiveTimeSpent,
-        weekly_time: effectiveTimeSpent,
-        total_time: effectiveTimeSpent,
-        last_updated: currentTime,
-      };
-      await UserTime.updateOne(
-        { token },
-        { $set: { [`language_time.${language}`]: newLangEntry } }
-      );
-    }
-
-    // Step 4: Update DailyTime for today.
-    await DailyTime.findOneAndUpdate(
-      { userId: user.userId, date: getDailyKey() },
-      {
-        $inc: { totalTime: effectiveTimeSpent },
-        $setOnInsert: { userId: user.userId, date: getDailyKey() },
-      },
-      { upsert: true, new: true }
-    );
-
-    // Step 5: Update level info based on total_time.
-    const currentXP = user.total_time / (60 * 1000); // XP in minutes
-    const newLevel = calculateLevel(currentXP);
-    const currentLevelThreshold = getXpForLevel(newLevel);
-    const nextLevelThreshold = getXpForLevel(newLevel + 1);
-    const xpIntoCurrentLevel = currentXP - currentLevelThreshold;
-
+  );
+  // If no language record exists, then add one.
+  if (langUpdate.modifiedCount === 0) {
+    const newLangEntry = {
+      daily_time: effectiveTimeSpent,
+      weekly_time: effectiveTimeSpent,
+      total_time: effectiveTimeSpent,
+      last_updated: currentTime,
+    };
     await UserTime.updateOne(
       { token },
-      {
-        $set: {
-          "level.xpAtCurrentLevel": xpIntoCurrentLevel,
-          "level.xpForNextLevel": nextLevelThreshold - currentLevelThreshold,
-        },
-        $max: { "level.current": newLevel },
-      }
+      { $set: { [`language_time.${language}`]: newLangEntry } }
     );
-
-    // Re-fetch updated user.
-    const updatedUser = await UserTime.findOne({ token }).lean();
-    return res.status(200).json({
-      message: "Time logged successfully",
-      user: updatedUser,
-    });
-  } catch (error) {
-    return handleError(res, error, "log coding time");
   }
+
+  // Step 4: Update DailyTime for today.
+  // Compute a day key that represents 00:00 IST in UTC.
+  function getISTDayStartInUTC() {
+    const now = new Date();
+    // Convert current UTC time to IST.
+    const istNow = new Date(now.getTime() + 5.5 * 3600 * 1000);
+    // Get the start of the IST day.
+    const istStart = new Date(
+      Date.UTC(istNow.getFullYear(), istNow.getMonth(), istNow.getDate())
+    );
+    // Convert back to UTC by subtracting the 5.5 hour offset.
+    return new Date(istStart.getTime() - 5.5 * 3600 * 1000);
+  }
+  const dailyKey = getISTDayStartInUTC();
+
+  await DailyTime.findOneAndUpdate(
+    { userId: user.userId, date: dailyKey },
+    {
+      $inc: { totalTime: effectiveTimeSpent },
+      $setOnInsert: { userId: user.userId, date: dailyKey },
+    },
+    { upsert: true, new: true }
+  );
+
+  // Step 5: Update level info based on total_time.
+  const currentXP = user.total_time / (60 * 1000); // XP in minutes
+  const newLevel = calculateLevel(currentXP);
+  const currentLevelThreshold = getXpForLevel(newLevel);
+  const nextLevelThreshold = getXpForLevel(newLevel + 1);
+  const xpIntoCurrentLevel = currentXP - currentLevelThreshold;
+
+  await UserTime.updateOne(
+    { token },
+    {
+      $set: {
+        "level.xpAtCurrentLevel": xpIntoCurrentLevel,
+        "level.xpForNextLevel": nextLevelThreshold - currentLevelThreshold,
+      },
+      $max: { "level.current": newLevel },
+    }
+  );
+
+  // Re-fetch the updated user.
+  const updatedUser = await UserTime.findOne({ token });
+  return res.status(200).json({
+    message: "Time logged successfully",
+    user: updatedUser,
+  });
 };
 
 /**
