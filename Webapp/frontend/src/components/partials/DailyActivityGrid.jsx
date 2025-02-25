@@ -69,7 +69,9 @@ function DailyActivityGrid({ dailyData, formatTime }) {
     // Convert time to hours
     const hours = time / 3600000;
 
-    if (hours < 1) {
+    if (hours < 0.5) {
+      return "bg-gray-300";
+    } else if (hours < 1) {
       return "bg-[rgba(233,69,69,0.2)]";
     } else if (hours < 3) {
       return "bg-[rgba(233,69,69,0.4)]";
