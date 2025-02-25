@@ -14,8 +14,6 @@ import {
   PolarRadiusAxis,
 } from "recharts";
 
-// Example Radar data is no longer used since we now use langDataArray.
-
 export default function StatsComponent({
   dailyData,
   langDataArray,
@@ -33,11 +31,10 @@ export default function StatsComponent({
     return `${hrs}hr`;
   };
 
-  // Custom tooltip component that shows full date for month or total view.
+  // Custom tooltip component
   const CustomTooltip = ({ active, payload, label }) => {
     if (active && payload && payload.length) {
       const { fullLabel, value } = payload[0].payload;
-      // For month or total views, display the complete date if available.
       const displayLabel =
         (selectedTimeSpan === "month" || selectedTimeSpan === "total") &&
         fullLabel
@@ -64,38 +61,45 @@ export default function StatsComponent({
     return null;
   };
 
-  // Build the data for each view.
   const filteredData = useMemo(() => {
     if (!dailyData || dailyData.length === 0) {
       return { week: [], month: [], total: [] };
     }
 
-    // Sort the data by date ascending.
+    // Helper to shift a date by one day (for backend records only)
+    const shiftDateByOne = (dateInput) => {
+      const date = new Date(dateInput);
+      date.setUTCDate(date.getUTCDate() + 1);
+      return date;
+    };
+
+    // Sort the records using the shifted dates.
     const sortedData = [...dailyData].sort(
-      (a, b) => new Date(a.date) - new Date(b.date)
+      (a, b) => shiftDateByOne(a.date) - shiftDateByOne(b.date)
     );
+
     const now = new Date();
 
-    // Helper: Check if two dates are the same day in UTC.
+    // Check if two dates are the same in UTC.
     const isSameDayUTC = (d1, d2) =>
       d1.getUTCFullYear() === d2.getUTCFullYear() &&
       d1.getUTCMonth() === d2.getUTCMonth() &&
       d1.getUTCDate() === d2.getUTCDate();
 
-    // --- WEEK DATA: Last 7 days ---
+    // --- WEEK DATA: Last 7 days based on current "now" (unchanged) ---
     const weekDates = Array.from({ length: 7 }, (_, i) => {
-      const d = new Date(
+      return new Date(
         Date.UTC(
           now.getUTCFullYear(),
           now.getUTCMonth(),
           now.getUTCDate() - (6 - i)
         )
       );
-      return d;
     });
     const weekData = weekDates.map((dateObj) => {
+      // Shift record dates for comparison only.
       const found = sortedData.find((record) => {
-        const recordDate = new Date(record.date);
+        const recordDate = shiftDateByOne(record.date);
         return isSameDayUTC(recordDate, dateObj);
       });
       return {
@@ -104,29 +108,26 @@ export default function StatsComponent({
       };
     });
 
-    // --- MONTH DATA: Last 30 days ---
+    // --- MONTH DATA: Last 30 days based on current "now" (unchanged) ---
     const monthDates = Array.from({ length: 30 }, (_, i) => {
-      const d = new Date(
+      return new Date(
         Date.UTC(
           now.getUTCFullYear(),
           now.getUTCMonth(),
           now.getUTCDate() - (29 - i)
         )
       );
-      return d;
     });
     const monthData = monthDates.map((dateObj) => {
       const found = sortedData.find((record) => {
-        const recordDate = new Date(record.date);
+        const recordDate = shiftDateByOne(record.date);
         return isSameDayUTC(recordDate, dateObj);
       });
       return {
-        // X-axis: abbreviated month and day
         name: dateObj.toLocaleDateString("en-US", {
           month: "short",
           day: "numeric",
         }),
-        // Full date for tooltip (e.g. "January 30, 2025")
         fullLabel: dateObj.toLocaleDateString("en-US", {
           month: "long",
           day: "numeric",
@@ -136,11 +137,10 @@ export default function StatsComponent({
       };
     });
 
-    // --- TOTAL DATA: Group all records by month ---
+    // --- TOTAL DATA: Group records by month (using shifted record dates) ---
     const totalDataMap = {};
     sortedData.forEach((record) => {
-      const dateObj = new Date(record.date);
-      // Group by year-month using month index.
+      const dateObj = shiftDateByOne(record.date);
       const key = `${dateObj.getUTCFullYear()}-${dateObj.getUTCMonth()}`;
       if (!totalDataMap[key]) {
         totalDataMap[key] = { totalTime: 0, date: dateObj };
@@ -164,16 +164,15 @@ export default function StatsComponent({
     return { week: weekData, month: monthData, total: totalData };
   }, [dailyData]);
 
-  // Choose the appropriate dataset.
   const timeSpanData = filteredData[selectedTimeSpan] || [];
 
-  // Compute the maximum time value (in minutes) from the data.
+  // Compute max value for Y-axis.
   const maxTimeValue = useMemo(() => {
     if (timeSpanData.length === 0) return 0;
     return Math.max(...timeSpanData.map((d) => d.value));
   }, [timeSpanData]);
 
-  // Compute the Y-axis upper bound (in minutes) dynamically.
+  // Dynamic Y-axis upper bound.
   const yAxisDomain = useMemo(() => {
     if (maxTimeValue < 60) {
       let upper = Math.ceil((maxTimeValue * 1.2) / 5) * 5;
@@ -187,22 +186,27 @@ export default function StatsComponent({
     }
   }, [maxTimeValue]);
 
-  // --- Radar Chart Data ---
-
-  // Build radar chart data from langDataArray using normalized total_time.
+  // Radar Chart Data: Only display top 6 languages (if there are more than 6)
   const normalizedRadarData = useMemo(() => {
     if (!langDataArray || langDataArray.length === 0) {
       return [];
     }
+    // If more than 6 languages, sort and slice top 6.
+    let topLangData = langDataArray;
+    if (langDataArray.length > 6) {
+      topLangData = [...langDataArray]
+        .sort((a, b) => b.total_time - a.total_time)
+        .slice(0, 6);
+    }
+    // Compute max total time among the top languages.
     const maxTotalTime = Math.max(
-      ...langDataArray.map((item) => item.total_time)
+      ...topLangData.map((item) => item.total_time)
     );
-    return langDataArray.map((item) => ({
+    return topLangData.map((item) => ({
       language: formatLanguage(item.language),
-      // Normalize the total_time (in ms) to a value between 0 and 100.
       proficiency: Math.round((item.total_time / maxTotalTime) * 100),
     }));
-  }, [langDataArray]);
+  }, [langDataArray, formatLanguage]);
 
   return (
     <div className="w-full mx-auto p-4">

@@ -61,6 +61,7 @@ function DailyActivityGrid({ dailyData, formatTime }) {
     const lastMonth = months[months.length - 1];
     lastMonth.span = Math.ceil(days.length / 7) - lastMonth.startCol;
   }
+
   const getColorIntensity = (time) => {
     // time is in milliseconds
     if (time === 0) return "bg-gray-300";
@@ -104,7 +105,7 @@ function DailyActivityGrid({ dailyData, formatTime }) {
       </div>
 
       <div className="grid grid-cols-[auto_1fr] gap-2">
-        <div className="grid  grid-rows-7 gap-[4px] justify-items-end">
+        <div className="grid grid-rows-7 gap-[4px] justify-items-end">
           {dayLabels.map((day, i) => (
             <div
               key={i}
@@ -119,9 +120,12 @@ function DailyActivityGrid({ dailyData, formatTime }) {
         <div className="grid grid-rows-7 grid-flow-col auto-cols-[minmax(14px, 1fr)] gap-[4px]">
           {days.map((date, i) => {
             const formattedDate = date.toISOString().split("T")[0];
-            const activity = dailyData.find((entry) =>
-              entry.date.startsWith(formattedDate)
-            );
+            // Shift each dailyData record date forward by one day for comparison.
+            const activity = dailyData.find((entry) => {
+              const shiftedDate = new Date(entry.date);
+              shiftedDate.setDate(shiftedDate.getDate() + 1);
+              return shiftedDate.toISOString().split("T")[0] === formattedDate;
+            });
             const totalTime = activity ? activity.totalTime : 0;
             const colorClass = getColorIntensity(totalTime);
 

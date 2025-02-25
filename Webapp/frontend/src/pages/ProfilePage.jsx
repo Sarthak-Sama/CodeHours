@@ -369,19 +369,6 @@ function ProfilePage({ formatTime }) {
                       }`}
                     </h4>
                   </div>
-                  {/* <div className="flex my-1 gap-2 items-center justify-center w-full md:w-[70%] xl:w-[50%] h-[9vh] rounded-xl bg-[#212529] hover:bg-[#191c1e] text-[#f5f5f5] group transition-all duration-300 ease-in-out">
-                    <h3 className="opacity-70 group-hover:opacity-80 transition-all duration-300 ease-in-out">
-                      Longest Coding Session:
-                    </h3>
-                    <h4 className="opacity-70 group-hover:opacity-100 transition-all duration-300 ease-in-out">
-                    
-                      {formatTime(
-                        Math.floor(
-                          viewingUser?.longest_coding_session / (60 * 1000)
-                        )
-                      ) || 0}
-                    </h4>
-                  </div> */}
                 </div>
                 <div className="w-full md:w-1/2 mt-10 mb-12">
                   <LanguageTimeDisplay

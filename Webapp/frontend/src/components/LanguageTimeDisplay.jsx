@@ -30,13 +30,16 @@ const LanguageTimeDisplay = ({ langDataArray, formatTime }) => {
       </h2>
       <div className="flex flex-wrap mb-5 gap-4">
         {filteredLanguages.map((langData) => {
-          const isSelected = selectedLang && selectedLang._id === langData._id;
+          const isSelected =
+            selectedLang && selectedLang.language === langData.language;
           return (
             <div
               key={langData._id}
               onClick={() => setSelectedLang(langData)}
               className={`px-5 py-1 border-2 border-[#212529] rounded-full text-[3.5vw] sm:text-[2vw] md:text-[1vw] ${
-                isSelected ? "bg-[#E94545] text-[#f5f5f5]" : " text-[#212529]"
+                isSelected
+                  ? "bg-[#E94545] text-[#f5f5f5]"
+                  : "bg-transparent text-[#212529]"
               } transition-all duration-100 ease-in-out`}
             >
               {formatLanguage(langData.language)}
