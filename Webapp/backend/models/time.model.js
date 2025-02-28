@@ -4,7 +4,6 @@ const mongoose = require("mongoose");
 const LanguageTimeSchema = new mongoose.Schema(
   {
     daily_time: { type: Number, default: 0 },
-    weekly_time: { type: Number, default: 0 },
     total_time: { type: Number, default: 0 },
     last_updated: { type: Date, default: Date.now },
   },

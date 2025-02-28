@@ -110,25 +110,51 @@ module.exports.logCodingTime = async (req, res) => {
   // Step 3: Update language-specific aggregates.
   const langKeyTotal = `language_time.${language}.total_time`;
   const langKeyDaily = `language_time.${language}.daily_time`;
-  const langKeyWeekly = `language_time.${language}.weekly_time`;
   const langKeyLastUpdated = `language_time.${language}.last_updated`;
 
-  const langUpdate = await UserTime.updateOne(
-    { token, [`language_time.${language}`]: { $exists: true } },
-    {
-      $inc: {
-        [langKeyTotal]: effectiveTimeSpent,
-        [langKeyDaily]: effectiveTimeSpent,
-        [langKeyWeekly]: effectiveTimeSpent,
-      },
-      $set: { [langKeyLastUpdated]: currentTime },
-    }
-  );
+  // const langUpdate = await UserTime.updateOne(
+  //   { token, [`language_time.${language}`]: { $exists: true } },
+  //   {
+  //     $inc: {
+  //       [langKeyTotal]: effectiveTimeSpent,
+  //       [langKeyDaily]: effectiveTimeSpent,
+  //       [langKeyWeekly]: effectiveTimeSpent,
+  //     },
+  //     $set: { [langKeyLastUpdated]: currentTime },
+  //   }
+  // );
+  let langUpdate;
+  if (user.daily_ist_date === currentISTDate) {
+    // It's the same day: increment the language's daily time.
+    langUpdate = await UserTime.updateOne(
+      { token, [`language_time.${language}`]: { $exists: true } },
+      {
+        $inc: {
+          [langKeyTotal]: effectiveTimeSpent,
+          [langKeyDaily]: effectiveTimeSpent,
+        },
+        $set: { [langKeyLastUpdated]: currentTime },
+      }
+    );
+  } else {
+    // New day: reset the language's daily time.
+    langUpdate = await UserTime.updateOne(
+      { token },
+      {
+        $set: {
+          [langKeyTotal]:
+            (user.language_time?.get(language)?.total_time || 0) +
+            effectiveTimeSpent,
+          [langKeyDaily]: effectiveTimeSpent,
+          [`language_time.${language}.last_updated`]: currentTime,
+        },
+      }
+    );
+  }
   // If no language record exists, then add one.
   if (langUpdate.modifiedCount === 0) {
     const newLangEntry = {
       daily_time: effectiveTimeSpent,
-      weekly_time: effectiveTimeSpent,
       total_time: effectiveTimeSpent,
       last_updated: currentTime,
     };
