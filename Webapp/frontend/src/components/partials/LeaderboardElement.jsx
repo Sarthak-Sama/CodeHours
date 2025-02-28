@@ -3,7 +3,6 @@ import { UserContext } from "../../context/Context";
 import { Link } from "react-router-dom";
 
 function LeaderboardElement({ data, formatTime }) {
-  console.log(data);
   const { formatLanguage } = useContext(UserContext);
   const oneDayAgoUTC = Date.now() - 24 * 60 * 60 * 1000;
 
@@ -12,8 +11,6 @@ function LeaderboardElement({ data, formatTime }) {
     .map(([language, langData]) => ({ language, ...langData }))
     .sort((a, b) => b.total_time - a.total_time)
     .slice(0, 6);
-
-  console.log(topLanguages);
 
   const filteredLanguages = topLanguages.filter(
     (language) =>

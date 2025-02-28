@@ -20,8 +20,8 @@ app.use(
       "http://localhost:5173",
       "https://p652kfhs-3000.inc1.devtunnels.ms",
       "https://code-tracker-frontend.vercel.app",
-      "https://codehours.site",
-      "http://codehours.site",
+      "https://www.codehours.site",
+      "http://www.codehours.site",
     ],
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
     credentials: true, // Allow cookies
