@@ -3,12 +3,21 @@ import { UserContext } from "../context/Context";
 
 const LanguageTimeDisplay = ({ langDataArray, formatTime }) => {
   const { formatLanguage, allowedLanguages } = useContext(UserContext);
-
+  const getCurrentISTDateString = () => {
+    const nowUTC = new Date();
+    const nowIST = new Date(nowUTC.getTime() + 5.5 * 3600 * 1000);
+    const year = nowIST.getFullYear();
+    const month = String(nowIST.getMonth() + 1).padStart(2, "0");
+    const day = String(nowIST.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  };
+  1;
   // Only display languages whose name is in the allowedLanguages list and daily_time > 0.
   const filteredLanguages = langDataArray.filter(
     (langData) =>
       allowedLanguages.includes(langData.language.trim().toLowerCase()) &&
-      langData.daily_time > 5 * 60 * 1000 // 5 minutes
+      langData.daily_time > 5 * 60 * 1000 &&
+      langData.daily_ist_date === currentISTDate
   );
 
   const [selectedLang, setSelectedLang] = useState(

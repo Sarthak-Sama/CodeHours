@@ -108,24 +108,18 @@ module.exports.logCodingTime = async (req, res) => {
   });
 
   // Step 3: Update language-specific aggregates.
+  // Define keys for easier updates.
   const langKeyTotal = `language_time.${language}.total_time`;
   const langKeyDaily = `language_time.${language}.daily_time`;
   const langKeyLastUpdated = `language_time.${language}.last_updated`;
+  const langKeyDailyISTDate = `language_time.${language}.daily_ist_date`;
 
-  // const langUpdate = await UserTime.updateOne(
-  //   { token, [`language_time.${language}`]: { $exists: true } },
-  //   {
-  //     $inc: {
-  //       [langKeyTotal]: effectiveTimeSpent,
-  //       [langKeyDaily]: effectiveTimeSpent,
-  //       [langKeyWeekly]: effectiveTimeSpent,
-  //     },
-  //     $set: { [langKeyLastUpdated]: currentTime },
-  //   }
-  // );
+  // Get the language record (if it exists) from the user's language_time map.
+  let langEntry = user.language_time.get(language);
   let langUpdate;
-  if (user.daily_ist_date === currentISTDate) {
-    // It's the same day: increment the language's daily time.
+
+  if (langEntry && langEntry.daily_ist_date === currentISTDate) {
+    // Same day for this language: increment its daily time.
     langUpdate = await UserTime.updateOne(
       { token, [`language_time.${language}`]: { $exists: true } },
       {
@@ -137,33 +131,34 @@ module.exports.logCodingTime = async (req, res) => {
       }
     );
   } else {
-    // New day: reset the language's daily time.
+    // Either no record exists, or the stored daily date is not today: reset daily time.
     langUpdate = await UserTime.updateOne(
       { token },
       {
         $set: {
           [langKeyTotal]:
-            (user.language_time?.get(language)?.total_time || 0) +
-            effectiveTimeSpent,
+            (langEntry ? langEntry.total_time : 0) + effectiveTimeSpent,
           [langKeyDaily]: effectiveTimeSpent,
-          [`language_time.${language}.last_updated`]: currentTime,
+          [langKeyDailyISTDate]: currentISTDate,
+          [langKeyLastUpdated]: currentTime,
         },
       }
     );
   }
-  // If no language record exists, then add one.
+
+  // If no language record exists (or update didn't modify any document), add one.
   if (langUpdate.modifiedCount === 0) {
     const newLangEntry = {
       daily_time: effectiveTimeSpent,
       total_time: effectiveTimeSpent,
       last_updated: currentTime,
+      daily_ist_date: currentISTDate,
     };
     await UserTime.updateOne(
       { token },
       { $set: { [`language_time.${language}`]: newLangEntry } }
     );
   }
-
   // Step 4: Update DailyTime for today.
   // Compute a day key that represents 00:00 IST in UTC.
   function getISTDayStartInUTC() {
