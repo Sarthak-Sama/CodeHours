@@ -62,10 +62,6 @@ const LanguageTimeDisplay = ({ langDataArray, formatTime }) => {
             {formatTime(Math.floor(selectedLang.daily_time / 60000))}
           </div>
           <div>
-            <strong>Weekly Time:</strong>
-            {formatTime(Math.floor(selectedLang.weekly_time / 60000))}
-          </div>
-          <div>
             <strong>Total Time:</strong>
             {formatTime(Math.floor(selectedLang.total_time / 60000))}
           </div>
