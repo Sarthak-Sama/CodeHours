@@ -17,7 +17,7 @@ const LanguageTimeDisplay = ({ langDataArray, formatTime }) => {
     (langData) =>
       allowedLanguages.includes(langData.language.trim().toLowerCase()) &&
       langData.daily_time > 5 * 60 * 1000 &&
-      langData.daily_ist_date === currentISTDate
+      langData.daily_ist_date === getCurrentISTDateString()
   );
 
   const [selectedLang, setSelectedLang] = useState(
