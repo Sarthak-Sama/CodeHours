@@ -4,9 +4,16 @@ import { Link } from "react-router-dom";
 
 function LeaderboardElement({ data, formatTime }) {
   const { formatLanguage } = useContext(UserContext);
-  const oneDayAgoUTC = Date.now() - 24 * 60 * 60 * 1000;
+  const getCurrentISTDateString = () => {
+    const nowUTC = new Date();
+    const nowIST = new Date(nowUTC.getTime() + 5.5 * 3600 * 1000);
+    const year = nowIST.getFullYear();
+    const month = String(nowIST.getMonth() + 1).padStart(2, "0");
+    const day = String(nowIST.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  };
 
-  // Sort languages by time and take top 4
+  // Sort languages by time and take top 6
   const topLanguages = Object.entries(data.language_time)
     .map(([language, langData]) => ({ language, ...langData }))
     .sort((a, b) => b.total_time - a.total_time)
@@ -14,8 +21,8 @@ function LeaderboardElement({ data, formatTime }) {
 
   const filteredLanguages = topLanguages.filter(
     (language) =>
-      new Date(language.last_updated).getTime() >= oneDayAgoUTC &&
-      language.daily_time > 10 * 60 * 1000 // 1 minute
+      language.daily_time > 10 * 60 * 1000 &&
+      language.daily_ist_date === getCurrentISTDateString()
   );
 
   return (

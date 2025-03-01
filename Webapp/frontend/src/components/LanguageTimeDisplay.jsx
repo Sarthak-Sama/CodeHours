@@ -11,7 +11,6 @@ const LanguageTimeDisplay = ({ langDataArray, formatTime }) => {
     const day = String(nowIST.getDate()).padStart(2, "0");
     return `${year}-${month}-${day}`;
   };
-  1;
   // Only display languages whose name is in the allowedLanguages list and daily_time > 0.
   const filteredLanguages = langDataArray.filter(
     (langData) =>
