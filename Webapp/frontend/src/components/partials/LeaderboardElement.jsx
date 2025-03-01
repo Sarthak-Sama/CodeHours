@@ -14,16 +14,19 @@ function LeaderboardElement({ data, formatTime }) {
   };
 
   // Sort languages by time and take top 6
-  const topLanguages = Object.entries(data.language_time)
-    .map(([language, langData]) => ({ language, ...langData }))
-    .sort((a, b) => b.total_time - a.total_time)
-    .slice(0, 6);
+  const languagesArray = Object.entries(data.language_time).map(
+    ([language, langData]) => ({ language, ...langData })
+  );
 
-  const filteredLanguages = topLanguages.filter(
+  const filteredLanguages = languagesArray.filter(
     (language) =>
-      language.daily_time > 10 * 60 * 1000 &&
+      language.daily_time > 5 * 60 * 1000 &&
       language.daily_ist_date === getCurrentISTDateString()
   );
+
+  const topLanguages = filteredLanguages
+    .sort((a, b) => b.total_time - a.total_time)
+    .slice(0, 6);
 
   return (
     <Link
@@ -49,7 +52,7 @@ function LeaderboardElement({ data, formatTime }) {
         id="languages"
         className="md:flex hidden gap-1 items-center justify-center shrink-0 w-[55%] overflow-hidden"
       >
-        {filteredLanguages.map((elem) => (
+        {topLanguages.map((elem) => (
           <span
             key={elem.language}
             className="rounded-full px-2 py-1 bg-[#E94545] border border-black text-white text-xs whitespace-nowrap truncate max-w-[120px]"
