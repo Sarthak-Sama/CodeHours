@@ -1,0 +1,14 @@
+name: Ping the Server Every 14 Minutes
+
+on:
+  schedule:
+    - cron: "*/14 * * * *" # Every 14 minutes
+  workflow_dispatch: # Allow manual trigger
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping the server
+        run: |
+          curl -s https://your-server-url.com > /dev/null
