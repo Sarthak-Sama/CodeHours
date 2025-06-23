@@ -45,30 +45,22 @@ module.exports.handleUserWebhook = async (req, res) => {
         image_url: pfpUrl,
       } = eventData;
 
+      // Add validation for required fields
+      if (!userId) {
+        console.log("Error: userId is required but not provided");
+        return res.status(400).json({ error: "userId is required" });
+      }
+
       const randomFourDigits = Math.floor(1000 + Math.random() * 9000);
       const fullname =
-        [first_name, last_name].filter((n) => n).join(" ") || "Anonymous"; // Construct fullname
+        [first_name, last_name].filter((n) => n).join(" ") || "Anonymous";
       const finalUsername =
-        username || `${first_name}${last_name}${randomFourDigits}`;
-
-      if (!userId || !finalUsername || !fullname || !pfpUrl) {
-        console.log(
-          "Error while creating user. All credentials are not provided in event data"
-        );
-        return res
-          .status(400)
-          .json({ error: "All credentials are not provided in event data" });
-      }
+        username ||
+        `${first_name || "User"}${last_name || ""}${randomFourDigits}`;
 
       const existingUser = await UserTime.findOne({ userId });
 
       if (!existingUser) {
-        if (!pfpUrl || !finalUsername) {
-          return res
-            .status(400)
-            .json({ error: "PfpUrl or Username not provided in event data" });
-        }
-
         // Create a unique session token
         const sessionKey = crypto.randomBytes(16).toString("hex");
 
@@ -77,11 +69,11 @@ module.exports.handleUserWebhook = async (req, res) => {
           userId,
           username: finalUsername,
           fullname,
-          pfpUrl,
+          pfpUrl: pfpUrl || "", // Handle cases where pfpUrl might be null
           total_time: 0,
           daily_time: 0,
           weekly_time: 0,
-          language_time: [],
+          language_time: new Map(), // Initialize as Map
           last_updated: moment().utc(),
         });
 

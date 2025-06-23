@@ -52,29 +52,49 @@ const logCodingTime = async (language, startTime, endTime) => {
     return;
   }
 
-  try {
-    const response = await axios.post(ENDPOINT, {
-      token: sessionKey,
-      language: language,
-      startTime: startTime, // The timestamp when logging started
-      endTime: endTime, // The timestamp when logging ended
-      instanceId: instanceId, // Unique identifier for this VS Code instance
-    });
+  const maxRetries = 3;
+  let retryCount = 0;
 
-    if (response.status === 200) {
-      console.log(
-        `Coding time logged for ${language} from ${new Date(
-          startTime
-        ).toISOString()} to ${new Date(endTime).toISOString()}.`
+  while (retryCount < maxRetries) {
+    try {
+      const response = await axios.post(
+        ENDPOINT,
+        {
+          token: sessionKey,
+          language: language,
+          startTime: startTime, // The timestamp when logging started
+          endTime: endTime, // The timestamp when logging ended
+          instanceId: instanceId, // Unique identifier for this VS Code instance
+        },
+        {
+          timeout: 10000, // 10 second timeout
+        }
       );
-    } else {
-      console.error("Failed to log coding time:", response.statusText);
+
+      if (response.status === 200) {
+        console.log(
+          `Coding time logged for ${language} from ${new Date(
+            startTime
+          ).toISOString()} to ${new Date(endTime).toISOString()}.`
+        );
+        return;
+      }
+    } catch (error) {
+      retryCount++;
+      if (retryCount >= maxRetries) {
+        console.error(
+          "Failed to log coding time after retries:",
+          error.response?.data?.error || error.message
+        );
+      } else {
+        console.log(
+          `Retry ${retryCount}/${maxRetries} for logging coding time`
+        );
+        await new Promise(
+          (resolve) => setTimeout(resolve, 1000 * retryCount) // Exponential backoff
+        );
+      }
     }
-  } catch (error) {
-    console.error(
-      "Failed to log coding time:",
-      error.response?.data?.error || error.message
-    );
   }
 };
 
@@ -222,9 +242,13 @@ const fetchInitialCodingTime = async () => {
  * Updates the real-time coding timer in the status bar.
  */
 const updateTimer = () => {
+  const now = Date.now();
   // Pause updating if the user is inactive.
-  if (Date.now() - lastActivityTime > INACTIVITY_TIMEOUT) {
-    console.log("User is inactive. Pausing stopwatch.");
+  if (now - lastActivityTime > INACTIVITY_TIMEOUT) {
+    console.log(
+      "User is inactive. Pausing stopwatch and resetting language session."
+    );
+    languageStartTime = now; // Reset to avoid logging idle time
     return;
   }
 

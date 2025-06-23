@@ -107,56 +107,41 @@ module.exports.logCodingTime = async (req, res) => {
     new: true,
   });
 
-  // Step 3: Update language-specific aggregates.
-  // Define keys for easier updates.
-  const langKeyTotal = `language_time.${language}.total_time`;
-  const langKeyDaily = `language_time.${language}.daily_time`;
-  const langKeyLastUpdated = `language_time.${language}.last_updated`;
-  const langKeyDailyISTDate = `language_time.${language}.daily_ist_date`;
+  // Step 3: Update language-specific aggregates using atomic operations.
+  const langEntry = user.language_time.get(language);
 
-  // Get the language record (if it exists) from the user's language_time map.
-  let langEntry = user.language_time.get(language);
-  let langUpdate;
+  // Try to update existing language entry for the same day
+  const langUpdate = await UserTime.findOneAndUpdate(
+    {
+      token,
+      [`language_time.${language}.daily_ist_date`]: currentISTDate,
+    },
+    {
+      $inc: {
+        [`language_time.${language}.total_time`]: effectiveTimeSpent,
+        [`language_time.${language}.daily_time`]: effectiveTimeSpent,
+      },
+      $set: { [`language_time.${language}.last_updated`]: currentTime },
+    },
+    { new: true }
+  );
 
-  if (langEntry && langEntry.daily_ist_date === currentISTDate) {
-    // Same day for this language: increment its daily time.
-    langUpdate = await UserTime.updateOne(
-      { token, [`language_time.${language}`]: { $exists: true } },
-      {
-        $inc: {
-          [langKeyTotal]: effectiveTimeSpent,
-          [langKeyDaily]: effectiveTimeSpent,
-        },
-        $set: { [langKeyLastUpdated]: currentTime },
-      }
-    );
-  } else {
-    // Either no record exists, or the stored daily date is not today: reset daily time.
-    langUpdate = await UserTime.updateOne(
+  if (!langUpdate) {
+    // Either no language entry exists or different date - create/reset entry
+    await UserTime.findOneAndUpdate(
       { token },
       {
         $set: {
-          [langKeyTotal]:
-            (langEntry ? langEntry.total_time : 0) + effectiveTimeSpent,
-          [langKeyDaily]: effectiveTimeSpent,
-          [langKeyDailyISTDate]: currentISTDate,
-          [langKeyLastUpdated]: currentTime,
+          [`language_time.${language}`]: {
+            total_time:
+              (langEntry ? langEntry.total_time : 0) + effectiveTimeSpent,
+            daily_time: effectiveTimeSpent,
+            daily_ist_date: currentISTDate,
+            last_updated: currentTime,
+          },
         },
-      }
-    );
-  }
-
-  // If no language record exists (or update didn't modify any document), add one.
-  if (langUpdate.modifiedCount === 0) {
-    const newLangEntry = {
-      daily_time: effectiveTimeSpent,
-      total_time: effectiveTimeSpent,
-      last_updated: currentTime,
-      daily_ist_date: currentISTDate,
-    };
-    await UserTime.updateOne(
-      { token },
-      { $set: { [`language_time.${language}`]: newLangEntry } }
+      },
+      { upsert: true }
     );
   }
   // Step 4: Update DailyTime for today.
@@ -165,12 +150,14 @@ module.exports.logCodingTime = async (req, res) => {
     const now = new Date();
     // Convert current UTC time to IST.
     const istNow = new Date(now.getTime() + 5.5 * 3600 * 1000);
-    // Get the start of the IST day.
-    const istStart = new Date(
-      Date.UTC(istNow.getFullYear(), istNow.getMonth(), istNow.getDate())
+    // Get the start of the IST day (midnight in IST)
+    const istMidnight = new Date(
+      istNow.getFullYear(),
+      istNow.getMonth(),
+      istNow.getDate()
     );
     // Convert back to UTC by subtracting the 5.5 hour offset.
-    return new Date(istStart.getTime() - 5.5 * 3600 * 1000);
+    return new Date(istMidnight.getTime() - 5.5 * 3600 * 1000);
   }
   const dailyKey = getISTDayStartInUTC();
 
@@ -277,19 +264,23 @@ module.exports.getUserTimeStats = async (req, res) => {
 };
 
 // Helper functions for stats.
-const getMonthlyStats = async (userId) => {
-  const startOfMonth = moment().utc().startOf("month").toDate();
+const getWeeklyStats = async (userId) => {
+  const startOfToday = new Date();
+  startOfToday.setHours(0, 0, 0, 0);
+  const sevenDaysAgo = new Date(
+    startOfToday.getTime() - 7 * 24 * 60 * 60 * 1000
+  );
   const result = await DailyTime.aggregate([
-    { $match: { userId, date: { $gte: startOfMonth } } },
+    { $match: { userId, date: { $gte: sevenDaysAgo } } },
     { $group: { _id: null, total: { $sum: "$totalTime" } } },
   ]);
   return { time: result.length ? result[0].total : 0 };
 };
 
-const getYearlyStats = async (userId) => {
-  const startOfYear = moment().utc().startOf("year").toDate();
+const getMonthlyStats = async (userId) => {
+  const startOfMonth = moment().utc().startOf("month").toDate();
   const result = await DailyTime.aggregate([
-    { $match: { userId, date: { $gte: startOfYear } } },
+    { $match: { userId, date: { $gte: startOfMonth } } },
     { $group: { _id: null, total: { $sum: "$totalTime" } } },
   ]);
   return { time: result.length ? result[0].total : 0 };
@@ -309,7 +300,7 @@ module.exports.fetchUser = async (req, res) => {
     const startOfToday = new Date();
     startOfToday.setHours(0, 0, 0, 0);
     const sevenDaysAgo = new Date(
-      startOfToday.getTime() - 6 * 24 * 60 * 60 * 1000
+      startOfToday.getTime() - 7 * 24 * 60 * 60 * 1000
     );
 
     const dailyTimes = await DailyTime.find({

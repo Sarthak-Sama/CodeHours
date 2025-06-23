@@ -66,10 +66,19 @@ class CodeHoursStopwatch extends HTMLElement {
       console.error("CodeHoursStopwatch: 'user' attribute is required.");
       return;
     }
+
+    const timespan = this.getAttribute("dataTimeSpan") || "daily";
+
     try {
+      // Use production endpoint instead of localhost
       const response = await fetch(
-        `http://localhost:3000/api/codingTime?user=${user}`
+        `https://codehours.onrender.com/api/codingTime?user=${user}&timespan=${timespan}`
       );
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
       const data = await response.json();
 
       // Parse new values
@@ -87,6 +96,9 @@ class CodeHoursStopwatch extends HTMLElement {
       }
     } catch (error) {
       console.error("CodeHoursStopwatch: Error fetching coding time", error);
+      // Set a fallback state on error
+      this.isCoding = false;
+      this.updateDisplay();
     }
   }
 
