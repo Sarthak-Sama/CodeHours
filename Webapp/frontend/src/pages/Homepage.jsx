@@ -20,7 +20,7 @@ function Homepage({ formatTime }) {
       console.log("Error fetching the leaderboard: ", error);
     }
   };
-
+  // Fetching the leaderboard and the user data
   useEffect(() => {
     fetchLeaderboard();
     if (user) {
