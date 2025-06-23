@@ -11,4 +11,4 @@ jobs:
     steps:
       - name: Ping the server
         run: |
-          curl -s https://your-server-url.com > /dev/null
+          curl -s https://codehours.onrender.com > /dev/null
